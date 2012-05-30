@@ -48,11 +48,14 @@ class Estoque extends Conexao
 		
 		//LOCALIZA ITENS MOVIMENTO DETALHE DO MOVIMENTO CABECALHO INFORMADO
 		$query0 = "SELECT * FROM movimento_ent_detalhe WHERE MOVIMENTO_ENT_CABECALHO_ID='$mecVO->ID'";
-		$result0 = $this->conn->query($query0);		
+		$result0 = $this->conn->query($query0);
+		
+		
 		
 		if($result0->num_rows == 0)
 		{
 			$resultado = false;
+			
 		}		
 		
 		$valorTotal = 0;
@@ -68,8 +71,7 @@ class Estoque extends Conexao
 			$IPI = $row0['IPI'];
 			$DARF = $row0['DARF'];
 			$GARANTIA = $row0['GARANTIA'];
-			
-			
+			$QTD_ESTOQUE = $row0['QTD'];
 			
 			//VERIFICAR QUANTIDADE JA EXISTENTE
 			$query1 = "SELECT * FROM produto WHERE ID=$ID";
@@ -79,11 +81,12 @@ class Estoque extends Conexao
 			if($result1->num_rows == 0)
 			{
 				$resultado = false;
-			}
+				
+			}		
 			
 			//RESULTADO DA BUSCA PELO PRODUTO INFORMADO
 			$row1 = $result1->fetch_assoc();
-			
+						
 			//DEFINE A QUANTIDADE JA EXISTENTE
 			$qtdAntiga = $row1['QTD_ESTOQUE'];
 			
@@ -91,27 +94,35 @@ class Estoque extends Conexao
 			$qtdNova = $qtdAntiga + $row0['QTD'];
 			
 			//ATUALIZAR CADASTRO DE PRODUTOS
-			$queryUP = "UPDATE FROM produto SET ID_UNIDADE_PRODUTO=$UNIDADE_PRODUTO_ID,
-			QTD_ESTOQUE=$qtdNova, QTD_ESTOQUE_ANTERIOR=$qtdAntiga, VALOR_CUSTO=$VALOR_CUSTO, VALOR_VENDA=$VALOR_VENDA,
-			TAXA_IPI=$IPI, TAXA_ICMS=$ICMS, GARANTIA='$GARANTIA'";
+			$queryUP = "UPDATE  db_opus.produto SET  ID_UNIDADE_PRODUTO =  '$UNIDADE_PRODUTO_ID',
+			VALOR_CUSTO =  '$VALOR_CUSTO',VALOR_VENDA =  '$VALOR_VENDA',GARANTIA =  '$GARANTIA',
+			QTD_ESTOQUE =  '$QTD_ESTOQUE',
+			QTD_ESTOQUE_ANTERIOR =  '$qtdAntiga',TAXA_IPI =  '$IPI',TAXA_ICMS =  '$ICMS' WHERE ID = $ID";
 			
-			$resultUP = $this->conn->query($queryUP);
+			$resultUP = $this->conn->query($queryUP)or die($this->conn->error);
+			
 		}
 		
-		$mecVO->QTD_ITENS = $nRow0;
+		$mecVO->QTD_ITENS = $result0->num_rows;
 		$mecVO->VALOR_TOTAL = $valorTotal;
 		
-		$query = "INSERT INTO movimento_ent_cabecalho (ID,EMPRESA_ID,, COD_NF, FORNECEDOR_ID, QTD_ITENS, VALOR_TOTAL) " .
-				"VALUES ('$mecVO->ID','$mecVO->EMPRESA_ID','$mecVO->COD_NF','$mecVO->FORNECEDOR_ID', '$mecVO->QTD_ITENS', '$mecVO->VALOR_TOTAL')";
+		
+		
+		$query = "INSERT INTO movimento_ent_cabecalho (ID,EMPRESA_ID, COD_NF, FORNECEDOR_ID, QTD_ITENS, VALOR_TOTAL)
+		VALUES ($mecVO->ID,$mecVO->EMPRESA_ID,$mecVO->COD_NF,$mecVO->FORNECEDOR_ID,$mecVO->QTD_ITENS,$valorTotal)";
+		
 		$result = $this->conn->query($query);
+		
 		
 		if($this->conn->error)
 		{
+		    $erro = $this->conn->error;
 		    $this->conn->rollback();
 		    $this->conn->autocommit(true);
-		    return 'ERRO AO CADASTRAR MOVIMENTO CABECALHO1: '.$this->conn->error;
+		    return 'ERRO AO CADASTRAR MOVIMENTO CABECALHO2:'.$error;
 		}else{
 		    
+		   
 		    if($resultado)
 		    {
 			$this->conn->commit();
