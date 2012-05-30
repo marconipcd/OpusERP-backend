@@ -1,0 +1,95 @@
+K 25
+svn:wc:ra_dav:version-url
+V 55
+/svn/OpusWeb/!svn/ver/477/OpusWeb-PHPv2/scripstMigracao
+END
+migrarOSI.php
+K 25
+svn:wc:ra_dav:version-url
+V 69
+/svn/OpusWeb/!svn/ver/477/OpusWeb-PHPv2/scripstMigracao/migrarOSI.php
+END
+migrarMaterialAcesso.php
+K 25
+svn:wc:ra_dav:version-url
+V 80
+/svn/OpusWeb/!svn/ver/477/OpusWeb-PHPv2/scripstMigracao/migrarMaterialAcesso.php
+END
+migrarFiadores.php
+K 25
+svn:wc:ra_dav:version-url
+V 74
+/svn/OpusWeb/!svn/ver/477/OpusWeb-PHPv2/scripstMigracao/migrarFiadores.php
+END
+converterFornecedoresDBFProdutosSQL.php
+K 25
+svn:wc:ra_dav:version-url
+V 95
+/svn/OpusWeb/!svn/ver/477/OpusWeb-PHPv2/scripstMigracao/converterFornecedoresDBFProdutosSQL.php
+END
+converterProdutosDBFProdutosSQL.php
+K 25
+svn:wc:ra_dav:version-url
+V 91
+/svn/OpusWeb/!svn/ver/477/OpusWeb-PHPv2/scripstMigracao/converterProdutosDBFProdutosSQL.php
+END
+PRODUTOS_DBF.XML
+K 25
+svn:wc:ra_dav:version-url
+V 72
+/svn/OpusWeb/!svn/ver/477/OpusWeb-PHPv2/scripstMigracao/PRODUTOS_DBF.XML
+END
+duplicidadeFinanceiro.php
+K 25
+svn:wc:ra_dav:version-url
+V 81
+/svn/OpusWeb/!svn/ver/477/OpusWeb-PHPv2/scripstMigracao/duplicidadeFinanceiro.php
+END
+FORNECE_DBF.XML
+K 25
+svn:wc:ra_dav:version-url
+V 71
+/svn/OpusWeb/!svn/ver/477/OpusWeb-PHPv2/scripstMigracao/FORNECE_DBF.XML
+END
+migrarClientes.php
+K 25
+svn:wc:ra_dav:version-url
+V 74
+/svn/OpusWeb/!svn/ver/477/OpusWeb-PHPv2/scripstMigracao/migrarClientes.php
+END
+verificarnNumeroForaPadrao.php
+K 25
+svn:wc:ra_dav:version-url
+V 86
+/svn/OpusWeb/!svn/ver/477/OpusWeb-PHPv2/scripstMigracao/verificarnNumeroForaPadrao.php
+END
+atualizarTit_FECHADO_N_NUMERO_PADRAO.php
+K 25
+svn:wc:ra_dav:version-url
+V 96
+/svn/OpusWeb/!svn/ver/477/OpusWeb-PHPv2/scripstMigracao/atualizarTit_FECHADO_N_NUMERO_PADRAO.php
+END
+migrarFinanceiro.php
+K 25
+svn:wc:ra_dav:version-url
+V 76
+/svn/OpusWeb/!svn/ver/477/OpusWeb-PHPv2/scripstMigracao/migrarFinanceiro.php
+END
+migrarClientesViaSat.php
+K 25
+svn:wc:ra_dav:version-url
+V 80
+/svn/OpusWeb/!svn/ver/477/OpusWeb-PHPv2/scripstMigracao/migrarClientesViaSat.php
+END
+migrarAcessoCliente.php
+K 25
+svn:wc:ra_dav:version-url
+V 79
+/svn/OpusWeb/!svn/ver/477/OpusWeb-PHPv2/scripstMigracao/migrarAcessoCliente.php
+END
+migrarOSE.php
+K 25
+svn:wc:ra_dav:version-url
+V 69
+/svn/OpusWeb/!svn/ver/477/OpusWeb-PHPv2/scripstMigracao/migrarOSE.php
+END

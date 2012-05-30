@@ -1,0 +1,4 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<info>
+	<infoitem key="UD_ultimoBoleto" value="name:id;datatype:int,name:cliente;datatype:string,name:valor;datatype:string,name:status;datatype:string,name:vencimento;datatype:string,name:nNumero;datatype:string" />
+</info>

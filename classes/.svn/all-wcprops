@@ -1,0 +1,185 @@
+K 25
+svn:wc:ra_dav:version-url
+V 47
+/svn/OpusWeb/!svn/ver/477/OpusWeb-PHPv2/classes
+END
+Permissoes.php
+K 25
+svn:wc:ra_dav:version-url
+V 62
+/svn/OpusWeb/!svn/ver/477/OpusWeb-PHPv2/classes/Permissoes.php
+END
+Manutencao.php
+K 25
+svn:wc:ra_dav:version-url
+V 62
+/svn/OpusWeb/!svn/ver/477/OpusWeb-PHPv2/classes/Manutencao.php
+END
+CrmAtrendimento.php
+K 25
+svn:wc:ra_dav:version-url
+V 67
+/svn/OpusWeb/!svn/ver/477/OpusWeb-PHPv2/classes/CrmAtrendimento.php
+END
+Categoria.php
+K 25
+svn:wc:ra_dav:version-url
+V 61
+/svn/OpusWeb/!svn/ver/477/OpusWeb-PHPv2/classes/Categoria.php
+END
+BaseClass.php
+K 25
+svn:wc:ra_dav:version-url
+V 61
+/svn/OpusWeb/!svn/ver/477/OpusWeb-PHPv2/classes/BaseClass.php
+END
+Suporte.php
+K 25
+svn:wc:ra_dav:version-url
+V 59
+/svn/OpusWeb/!svn/ver/477/OpusWeb-PHPv2/classes/Suporte.php
+END
+PHPTelnet.php
+K 25
+svn:wc:ra_dav:version-url
+V 61
+/svn/OpusWeb/!svn/ver/477/OpusWeb-PHPv2/classes/PHPTelnet.php
+END
+Fiador.php
+K 25
+svn:wc:ra_dav:version-url
+V 58
+/svn/OpusWeb/!svn/ver/477/OpusWeb-PHPv2/classes/Fiador.php
+END
+Menu.php
+K 25
+svn:wc:ra_dav:version-url
+V 56
+/svn/OpusWeb/!svn/ver/477/OpusWeb-PHPv2/classes/Menu.php
+END
+CriarVO.php
+K 25
+svn:wc:ra_dav:version-url
+V 59
+/svn/OpusWeb/!svn/ver/477/OpusWeb-PHPv2/classes/CriarVO.php
+END
+Backup.php
+K 25
+svn:wc:ra_dav:version-url
+V 58
+/svn/OpusWeb/!svn/ver/477/OpusWeb-PHPv2/classes/Backup.php
+END
+Clientes.php
+K 25
+svn:wc:ra_dav:version-url
+V 60
+/svn/OpusWeb/!svn/ver/477/OpusWeb-PHPv2/classes/Clientes.php
+END
+Enderecos.php
+K 25
+svn:wc:ra_dav:version-url
+V 61
+/svn/OpusWeb/!svn/ver/477/OpusWeb-PHPv2/classes/Enderecos.php
+END
+Login.php
+K 25
+svn:wc:ra_dav:version-url
+V 57
+/svn/OpusWeb/!svn/ver/477/OpusWeb-PHPv2/classes/Login.php
+END
+ClaroTv.php
+K 25
+svn:wc:ra_dav:version-url
+V 59
+/svn/OpusWeb/!svn/ver/477/OpusWeb-PHPv2/classes/ClaroTv.php
+END
+InfoFinanceira.php
+K 25
+svn:wc:ra_dav:version-url
+V 66
+/svn/OpusWeb/!svn/ver/477/OpusWeb-PHPv2/classes/InfoFinanceira.php
+END
+routeros_api.php
+K 25
+svn:wc:ra_dav:version-url
+V 64
+/svn/OpusWeb/!svn/ver/477/OpusWeb-PHPv2/classes/routeros_api.php
+END
+Acesso.php
+K 25
+svn:wc:ra_dav:version-url
+V 58
+/svn/OpusWeb/!svn/ver/477/OpusWeb-PHPv2/classes/Acesso.php
+END
+Financeiro.php
+K 25
+svn:wc:ra_dav:version-url
+V 62
+/svn/OpusWeb/!svn/ver/477/OpusWeb-PHPv2/classes/Financeiro.php
+END
+Empresas.php
+K 25
+svn:wc:ra_dav:version-url
+V 60
+/svn/OpusWeb/!svn/ver/477/OpusWeb-PHPv2/classes/Empresas.php
+END
+Chamados.php
+K 25
+svn:wc:ra_dav:version-url
+V 60
+/svn/OpusWeb/!svn/ver/477/OpusWeb-PHPv2/classes/Chamados.php
+END
+Produtos.php
+K 25
+svn:wc:ra_dav:version-url
+V 60
+/svn/OpusWeb/!svn/ver/477/OpusWeb-PHPv2/classes/Produtos.php
+END
+Rotinas.php
+K 25
+svn:wc:ra_dav:version-url
+V 59
+/svn/OpusWeb/!svn/ver/477/OpusWeb-PHPv2/classes/Rotinas.php
+END
+FormasPgto.php
+K 25
+svn:wc:ra_dav:version-url
+V 62
+/svn/OpusWeb/!svn/ver/477/OpusWeb-PHPv2/classes/FormasPgto.php
+END
+Cadastros.php
+K 25
+svn:wc:ra_dav:version-url
+V 61
+/svn/OpusWeb/!svn/ver/477/OpusWeb-PHPv2/classes/Cadastros.php
+END
+Interfaces.php
+K 25
+svn:wc:ra_dav:version-url
+V 62
+/svn/OpusWeb/!svn/ver/477/OpusWeb-PHPv2/classes/Interfaces.php
+END
+Relatorios.php
+K 25
+svn:wc:ra_dav:version-url
+V 62
+/svn/OpusWeb/!svn/ver/477/OpusWeb-PHPv2/classes/Relatorios.php
+END
+Estoque.php
+K 25
+svn:wc:ra_dav:version-url
+V 59
+/svn/OpusWeb/!svn/ver/477/OpusWeb-PHPv2/classes/Estoque.php
+END
+Configuracoes.php
+K 25
+svn:wc:ra_dav:version-url
+V 65
+/svn/OpusWeb/!svn/ver/477/OpusWeb-PHPv2/classes/Configuracoes.php
+END
+LogOpus.php
+K 25
+svn:wc:ra_dav:version-url
+V 59
+/svn/OpusWeb/!svn/ver/477/OpusWeb-PHPv2/classes/LogOpus.php
+END

@@ -1,0 +1,597 @@
+<?php
+
+require_once 'classes/BaseClass.php';
+require_once 'vo/ProdutosVO.php';
+require_once 'vo/UnidadeProdutoVO.php';
+require_once 'vo/GrupoProdutoVO.php';
+require_once 'vo/ClientesVO.php';
+require_once 'vo/EndEntregaVO.php';
+require_once 'vo/MovimentoEntCabecalhoVO.php';
+require_once 'vo/MovimentoEntDetalheVO.php';
+
+ini_set('max_execution_time','2000');
+
+class Estoque extends BaseClass
+{
+	//----------MOVIMENTO ENTRADA-------------------------//
+	//-------------------------------------------------------------//
+	public function pegaCodMovimentoNF()
+	{
+		$query = "SHOW TABLE STATUS LIKE 'movimento_ent_cabecalho'";
+				$result = mysql_query($query);
+				$row = mysql_fetch_assoc($result);	
+		
+				if($row["Auto_increment"] == null)
+				{
+					$row["Auto_increment"] = 1;
+				}
+				
+				return $codigo = $row["Auto_increment"];
+	}
+	public function cadastrarCabeEntMovNF(MovimentoEntCabecalhoVO $mecVO)
+	{
+		
+		//SOMAR QTD DE ITENS E VALOR TOTAL
+		$query0 = "SELECT * FROM movimento_ent_detalhe WHERE MOVIMENTO_ENT_CABECALHO_ID='$mecVO->ID'";
+		if(!$result0 = mysql_query($query0))
+		{
+			return 'LOCALIZAR ITENS DE NF: ERRO '.mysql_error();
+		}
+		$nRow0 = mysql_num_rows($result0);
+		if($nRow0 <= 0)
+		{
+			return 'NENHUM ITEM FOI ENCONTRADO, ENTRADA CANCELADA';
+		}
+		
+		
+		$valorTotal = 0;
+		while($row0 = mysql_fetch_assoc($result0))
+		{
+			$valorTotal = $valorTotal+$row0['VALOR_CUSTO'];
+		}
+		
+		$mecVO->QTD_ITENS = $nRow0;
+		$mecVO->VALOR_TOTAL = $valorTotal;
+		
+		$query = "INSERT INTO movimento_ent_cabecalho (ID,EMPRESA_ID, COD_NF, FORNECEDOR_ID, QTD_ITENS, VALOR_TOTAL) " .
+				"VALUES ('$mecVO->ID','$mecVO->EMPRESA_ID','$mecVO->COD_NF','$mecVO->FORNECEDOR_ID', '$mecVO->QTD_ITENS', '$mecVO->VALOR_TOTAL')";
+		if(!$result = mysql_query($query))
+		{
+			return 'CADASTRAR CABECALHO DE ENTRADA DE MOVIMENTO: ERRO '.mysql_error();
+		}
+		
+		return 'ok';
+	}
+	public function cadastrarDetaEntMovNF(MovimentoEntDetalheVO $medVO)
+	{
+		$query = "INSERT INTO movimento_ent_detalhe (MOVIMENTO_ENT_CABECALHO_ID, PRODUTO_ID, UNIDADE_PRODUTO_ID, QTD, VALOR_CUSTO,
+		VALOR_VENDA, ICMS, IPI, DARF, GARANTIA) VALUES 
+		('$medVO->MOVIMENTO_ENT_CABECALHO_ID', '$medVO->PRODUTO_ID', '$medVO->UNIDADE_PRODUTO_ID', 
+		'$medVO->QTD', '$medVO->VALOR_CUSTO', '$medVO->VALOR_VENDA', '$medVO->ICMS', '$medVO->IPI',
+		'$medVO->DARF', '$medVO->GARANTIA')";
+		
+		if(!$result = mysql_query($query))
+		{
+			return 'CADASTRAR DETALHE DE ENTRADA DE MOVIMENTO: ERRO '.mysql_error();
+		}
+		
+		return 'ok';
+	}
+	//----------MOVIMENTO ENTRADA-------------------------//
+	//-------------------------------------------------------------//
+	
+	public function enviarPrevenda(ClientesVO $cliente,EndEntregaVO $endEntrega, $nPreVenda, $data,$hora)
+	{
+		//PEGA INFORMACOES DA PREVENDA
+		$query0 = "SELECT * FROM ecf_pre_venda_cabecalho WHERE ID='$nPreVenda'";
+		$result0 = mysql_query($query0);
+		$row0 = mysql_fetch_assoc($result0);
+		$EMPRESA_ID = $row0['EMPRESA_ID'];
+		$N_PREVENDA = str_pad( $row0['ID'], 20, '0', STR_PAD_LEFT );
+		$SUB_TOTAL = number_format($row0['VALOR'], 2, '.', '');
+		
+		//PEGA QUANTIDADE DE ITENS DA PREVENDA
+		$query2 = "SELECT pvd.*, p.*, undP.NOME as UNIDADE
+FROM ecf_pre_venda_detalhe as pvd, produto as p, unidade_produto as undP 
+WHERE pvd.ID_PRODUTO = p.ID AND p.ID_UNIDADE_PRODUTO = undP.ID AND
+pvd.ID_ECF_PRE_VENDA_CABECALHO=$nPreVenda AND CANCELADO='N'";
+		$result2 = mysql_query($query2);
+		$nRow2 = mysql_num_rows($result2);
+		$QTD_ITENS = number_format($nRow2, 3, '.', '');
+		
+		//PEGA CÓDIGO DO ARQUIVO TXT DE PREVENDA
+		$query = "SHOW TABLE STATUS LIKE 'registro_txt_prevenda'";
+		$result = mysql_query($query);
+		$row = mysql_fetch_assoc($result);	
+                			
+		$codigo = str_pad( $row["Auto_increment"], 8, '0', STR_PAD_LEFT ); 
+		
+		//REGISTRA ARQUIVO GERADO
+		$query1 = "INSERT INTO registro_txt_prevenda (EMPRESA_ID) VALUES ($EMPRESA_ID)";
+		$result1 = mysql_query($query1);
+		
+					
+	   $fp = fopen("./util/djsystem/prevenda/".$codigo.".djp", "w+");
+		
+		$quebra = chr(13).chr(10);		
+		$DATA_EMISSAO = date('dmYHms');
+		//REGISTRO PRE
+		$escreve = fwrite($fp, 'PRE|'.$N_PREVENDA.'|'.$DATA_EMISSAO.'|0|'.$cliente->NOME_RAZAO.'|'.$cliente->DOC_CPF_CNPJ.'|1|'.$SUB_TOTAL.'|0.00|0.00|'.$QTD_ITENS.'|||||||||||||0|'.$quebra);	
+		
+		//REGISTRO PIT
+		$SEQUENCIA = 0;
+		while($row2 = mysql_fetch_assoc($result2))
+		{
+		//PARAMETROS PREVENDA DETALHE
+		$ORDEM = $row2['ORDEM'];
+		$COD_EXTERNO_PRODUTO = $row2['ID_PRODUTO'];
+		$QTD =number_format($row2['QUANTIDADE'], 3, '.', '');
+		$PRECO_UNITARIO =number_format($row2['VALOR_UNITARIO'], 3, '.', '');
+		$VALOR_TOTAL =number_format($row2['VALOR_TOTAL'], 2, '.', '');
+		
+		//$row2 = mysql_fetch_assoc($result2);
+		$COD_BARRAS = $row2['GTIN'];
+		$DESCRICAO = $row2['DESCRICAO'];
+		
+		$UNIDADE = $row2['UNIDADE'];
+		$ST = $row2['PAF_P_ST'];
+		$ICMS = number_format($row2['TAXA_ICMS'], 2, '.', '');
+		$QTD_ESTOQUE = $row2['QTD_ESTOQUE'];
+		$IPPT = $row2['IPPT'];
+		
+		if($IPPT == 'T')
+		{
+			$PRODUCAO = 'N';
+		}else{
+			$PRODUCAO = 'S';
+		}
+		$SEQUENCIA++;
+		$escreve = fwrite($fp, 'PIT|'.$SEQUENCIA.'|'.$COD_EXTERNO_PRODUTO.'|'.$QTD.'|'.$PRECO_UNITARIO.'|0.00|0.00|'.$VALOR_TOTAL.'|'.$COD_BARRAS.'|'.$DESCRICAO.'|0|'.$UNIDADE.'|'.$ST.'|'.$ICMS.'|N|N|N|'.$PRODUCAO.'|'.$QTD_ESTOQUE.'|'.$quebra);
+			
+		}
+		
+		
+		//REGISTRO PEN
+		$diaEntrega = substr(0, 2, $data);
+		$mesEntrega = substr(3, 2, $data);
+		$anoEntrega = substr(6, 4, $data);
+		$horaEntrega = str_replace(':','',$hora);
+		$dataEntrega = $diaEntrega.$mesEntrega.$anoEntrega.$horaEntrega;
+		
+		if($endEntrega->CLIENTES_ID != '')
+		{
+		$escreve = fwrite($fp, 'PEN|'.$endEntrega->ENDERECO.'|'.$endEntrega->NUMERO.'|'.$endEntrega->COMPLEMENTO.'|'.$endEntrega->BAIRRO.'|'.$endEntrega->CIDADE.'|'.$endEntrega->UF.'|'.$endEntrega->CEP.'|'.$endEntrega->REFERENCIA.'|'.$dataEntrega.'|'.$quebra);
+		
+			//ATUALIZA ENDERECO DE ENTREGA
+			$queryUpEndereco = "UPDATE enderecos_entrega SET REFERENCIA='$endEntrega->REFERENCIA', COMPLEMENTO='$endEntrega->COMPLEMENTO' WHERE CLIENTES_ID='$endEntrega->CLIENTES_ID'";
+			if(!$resultUpEndereco = mysql_query($queryUpEndereco))
+			{
+				return 'Atualizacao de Endereco de Entrega: NAO FOI POSSIVEL ATUALIZAR '.mysql_error();
+			}
+		}		
+		fclose($fp);
+
+
+		return "/util/djsystem/prevenda/".$codigo.".djp";	
+	}
+	public function calcularTotal($codPrevenda,$valores)
+	{
+		$arrValores = explode('|', $valores);
+				
+			foreach ($arrValores as $arrValores2)
+			{
+				$valorTotal += $arrValores2;
+			}
+			
+			$query = "UPDATE ecf_pre_venda_cabecalho SET VALOR=$valorTotal WHERE ID='$codPrevenda'";
+			$result = mysql_query($query);
+		
+		return $valorTotal;
+	}
+	public function listarProdutos($codEmpresa)
+	{
+		$query = "SELECT * FROM produto WHERE EMPRESA_ID='$codEmpresa' ORDER by NOME ASC";
+		$result = mysql_query($query);
+		$nRow = mysql_num_rows($result);
+		if($nRow ==0){return 'ERRO';}
+		
+		while ($row = mysql_fetch_assoc($result))
+		{
+			$produto = new ProdutosVO();
+			
+			$produto->ID = $row['ID'];
+			$produto->EMPRESA_ID = $row['EMPRESA_ID'];
+			$produto->FORNECEDOR_ID = $row['FORNECEDOR_ID'];
+			$produto->GRUPO_ID = $row['GRUPO_ID'];
+			$produto->ID_UNIDADE_PRODUTO = $row['ID_UNIDADE_PRODUTO'];
+			$produto->GTIN = $row['GTIN'];
+			$produto->CODIGO_INTERNO = $row['CODIGO_INTERNO'];
+			$produto->NOME = $row['NOME'];
+			$produto->DESCRICAO = $row['DESCRICAO'];
+			$produto->DESCRICAO_PDV = $row['DESCRICAO_PDV'];
+			$produto->VALOR_CUSTO = $row['VALOR_CUSTO'];
+			$produto->VALOR_VENDA = $row['VALOR_VENDA'];
+			$produto->QTD_ESTOQUE = $row['QTD_ESTOQUE'];
+			$produto->QTD_ESTOQUE_ANTERIOR = $row['QTD_ESTOQUE_ANTERIOR'];
+			$produto->ESTOQUE_MIN = $row['ESTOQUE_MIN'];
+			$produto->ESTOQUE_MAX = $row['ESTOQUE_MAX'];
+			$produto->GARANTIA = $row['GARANTIA'];
+			$produto->IAT = $row['IAT'];
+			$produto->IPPT = $row['IPPT'];
+			$produto->NCM = $row['NCM'];
+			$produto->TIPO_ITEM_SPED = $row['TIPO_ITEM_SPED'];
+			$produto->DATA_ESTOQUE = $row['DATA_ESTOQUE'];
+			$produto->HORA_ESTOQUE = $row['HORA_ESTOQUE'];
+			$produto->TAXA_IPI = $row['TAXA_IPI'];
+			$produto->TAXA_ISSQN = $row['TAXA_ISSQN'];
+			$produto->TAXA_PIS = $row['TAXA_PIS'];
+			$produto->TAXA_COFINS = $row['TAXA_COFINS'];
+			$produto->TAXA_ICMS = $row['TAXA_ICMS'];
+			$produto->CST = $row['CST'];
+			$produto->CSOSN = $row['CSOSN'];
+			$produto->TOTALIZADOR_PARCIAL = $row['TOTALIZADOR_PARCIAL'];
+			$produto->ECF_ICMS_ST = $row['ECF_ICMS_ST'];
+			$produto->CODIGO_BALANCA = $row['CODIGO_BALANCA'];
+			$produto->PAF_P_ST = $row['PAF_P_ST'];
+			$produto->HASH_TRIPA = $row['HASH_TRIPA'];
+			$produto->HASH_INCREMENTO  = $row['HASH_INCREMENTO'];
+			
+			$produtos[] = $produto;
+		}
+		
+		return $produtos;
+		
+	}
+	public function procurarProdutos($codEmpresa, $nome)
+	{
+		$query = "SELECT * FROM produto WHERE EMPRESA_ID='$codEmpresa' AND NOME LIKE '%$nome%' ORDER by NOME ASC";
+		$result = mysql_query($query);
+		$nRow = mysql_num_rows($result);
+		if($nRow ==0){return 'ERRO';}
+		
+		while ($row = mysql_fetch_assoc($result))
+		{
+			$produto = new ProdutosVO();
+			
+			$produto->ID = $row['ID'];
+			$produto->EMPRESA_ID = $row['EMPRESA_ID'];
+			$produto->FORNECEDOR_ID = $row['FORNECEDOR_ID'];
+			$produto->GRUPO_ID = $row['GRUPO_ID'];
+			$produto->ID_UNIDADE_PRODUTO = $row['ID_UNIDADE_PRODUTO'];
+			$produto->GTIN = $row['GTIN'];
+			$produto->CODIGO_INTERNO = $row['CODIGO_INTERNO'];
+			$produto->NOME = $row['NOME'];
+			$produto->DESCRICAO = $row['DESCRICAO'];
+			$produto->DESCRICAO_PDV = $row['DESCRICAO_PDV'];
+			$produto->VALOR_CUSTO = $row['VALOR_CUSTO'];
+			$produto->VALOR_VENDA = $row['VALOR_VENDA'];
+			$produto->QTD_ESTOQUE = $row['QTD_ESTOQUE'];
+			$produto->QTD_ESTOQUE_ANTERIOR = $row['QTD_ESTOQUE_ANTERIOR'];
+			$produto->ESTOQUE_MIN = $row['ESTOQUE_MIN'];
+			$produto->ESTOQUE_MAX = $row['ESTOQUE_MAX'];
+			$produto->GARANTIA = $row['GARANTIA'];
+			$produto->IAT = $row['IAT'];
+			$produto->IPPT = $row['IPPT'];
+			$produto->NCM = $row['NCM'];
+			$produto->TIPO_ITEM_SPED = $row['TIPO_ITEM_SPED'];
+			$produto->DATA_ESTOQUE = $row['DATA_ESTOQUE'];
+			$produto->HORA_ESTOQUE = $row['HORA_ESTOQUE'];
+			$produto->TAXA_IPI = $row['TAXA_IPI'];
+			$produto->TAXA_ISSQN = $row['TAXA_ISSQN'];
+			$produto->TAXA_PIS = $row['TAXA_PIS'];
+			$produto->TAXA_COFINS = $row['TAXA_COFINS'];
+			$produto->TAXA_ICMS = $row['TAXA_ICMS'];
+			$produto->CST = $row['CST'];
+			$produto->CSOSN = $row['CSOSN'];
+			$produto->TOTALIZADOR_PARCIAL = $row['TOTALIZADOR_PARCIAL'];
+			$produto->ECF_ICMS_ST = $row['ECF_ICMS_ST'];
+			$produto->CODIGO_BALANCA = $row['CODIGO_BALANCA'];
+			$produto->PAF_P_ST = $row['PAF_P_ST'];
+			$produto->HASH_TRIPA = $row['HASH_TRIPA'];
+			$produto->HASH_INCREMENTO  = $row['HASH_INCREMENTO'];
+			
+			$produtos[] = $produto;
+		}
+		
+		return $produtos;
+	}
+	public function cadastrarProduto(ProdutosVO $produto)
+	{
+		$produto->DATA_ESTOQUE = date('Y-m-d');
+		$produto->HORA_ESTOQUE = date('h:m:s');
+		
+		$query = "INSERT INTO produto (EMPRESA_ID,FORNECEDOR_ID, GRUPO_ID, ID_UNIDADE_PRODUTO, GTIN, CODIGO_INTERNO, NOME, DESCRICAO, DESCRICAO_PDV, VALOR_VENDA, 
+		QTD_ESTOQUE, ESTOQUE_MIN, ESTOQUE_MAX, IAT, IPPT, NCM, TIPO_ITEM_SPED, DATA_ESTOQUE, HORA_ESTOQUE, TAXA_IPI, 
+		TAXA_ISSQN, TAXA_PIS, TAXA_COFINS, TAXA_ICMS, CST, CSOSN, TOTALIZADOR_PARCIAL, ECF_ICMS_ST, PAF_P_ST) 
+		VALUES ('$produto->EMPRESA_ID','$produto->FORNECEDOR_ID','$produto->GRUPO_ID', '$produto->ID_UNIDADE_PRODUTO', '$produto->GTIN', '$produto->CODIGO_INTERNO', '$produto->NOME', 
+		'$produto->DESCRICAO', '$produto->DESCRICAO_PDV', '$produto->VALOR_VENDA', '$produto->QTD_ESTOQUE',  
+		'$produto->ESTOQUE_MIN', '$produto->ESTOQUE_MAX', '$produto->IAT', 
+		'$produto->IPPT', '$produto->NCM', '$produto->TIPO_ITEM_SPED', '$produto->DATA_ESTOQUE', '$produto->HORA_ESTOQUE', 
+		'$produto->TAXA_IPI','$produto->TAXA_ISSQN','$produto->TAXA_PIS','$produto->TAXA_COFINS', '$produto->TAXA_ICMS', 
+		'$produto->CST', '$produto->CSOSN', '$produto->TOTALIZADOR_PARCIAL', '$produto->ECF_ICMS_ST', '$produto->PAF_P_ST' 
+		)";
+		
+		if(!$result = mysql_query($query))
+		{
+			return mysql_error();
+		}else{
+			return 'ok';
+		}		
+	}
+	public function cancelarPreVenda(EcfVendaCabecalhoVO $ecfVC)
+	{
+		$query = "UPDATE ecf_pre_venda_cabecalho SET SITUACAO='$ecfVC->SITUACAO' WHERE ID='$ecfVC->ID';";
+		if(!$result = mysql_query($query))
+		{
+			return 'ERRO CANCELAR PRE-VENDA: '.mysql_error();
+		}
+		
+		return 'ok';
+	}
+	public function fecharPreVenda(EcfVendaCabecalhoVO $ecfVC)
+	{
+		$query = "UPDATE ecf_pre_venda_cabecalho SET SITUACAO='$ecfVC->SITUACAO' WHERE ID='$ecfVC->ID'";
+		if(!$result = mysql_query($query))
+		{
+			return 'ERRO';
+		}
+	}
+	public function alterarProduto(ProdutosVO $produto)
+	{
+		$query = "UPDATE produto SET FORNECEDOR_ID='$produto->FORNECEDOR_ID',GRUPO_ID='$produto->GRUPO_ID',
+		ID_UNIDADE_PRODUTO='$produto->ID_UNIDADE_PRODUTO',GTIN='$produto->GTIN',CODIGO_INTERNO='$produto->CODIGO_INTERNO',NOME='$produto->NOME'
+		,DESCRICAO='$produto->DESCRICAO',DESCRICAO_PDV='$produto->DESCRICAO_PDV',VALOR_VENDA='$produto->VALOR_VENDA',QTD_ESTOQUE='$produto->QTD_ESTOQUE'
+		,QTD_ESTOQUE_ANTERIOR='$produto->QTD_ESTOQUE_ANTERIOR',ESTOQUE_MIN='$produto->ESTOQUE_MIN',ESTOQUE_MAX='$produto->ESTOQUE_MAX',IAT='$produto->IAT'
+		,IPPT='$produto->IPPT',NCM='$produto->NCM',TIPO_ITEM_SPED='$produto->TIPO_ITEM_SPED',DATA_ESTOQUE='$produto->DATA_ESTOQUE',HORA_ESTOQUE='$produto->HORA_ESTOQUE' 
+		,TAXA_IPI='$produto->TAXA_IPI',TAXA_ISSQN='$produto->TAXA_ISSQN',TAXA_PIS='$produto->TAXA_PIS',TAXA_COFINS='$produto->TAXA_COFINS'
+		,TAXA_ICMS='$produto->TAXA_ICMS',CST='$produto->CST',CSOSN='$produto->CSOSN',TOTALIZADOR_PARCIAL='$produto->TOTALIZADOR_PARCIAL'  
+		,ECF_ICMS_ST='$produto->ECF_ICMS_ST',PAF_P_ST='$produto->PAF_P_ST' WHERE ID=$produto->ID";
+		
+		if(!$result = mysql_query($query))
+		{
+			return mysql_error();
+		}else{
+			return 'ok';
+		}	
+	}
+	public function excluirProduto($codProduto)
+	{
+		$query = "DELETE FROM produto WHERE ID='$codProduto'";
+		
+		if(!$result = mysql_query($query))
+		{
+			mysql_error();
+		}else{
+			return 'ok';
+		}
+	}
+	public function listarUnidadeProduto($codEmpresa)
+	{
+		$query = "SELECT * FROM unidade_produto WHERE EMPRESA_ID = '$codEmpresa'";
+		$result = mysql_query($query);
+		$nRow = mysql_num_rows($result);
+		if($nRow == 0){return 'ERRO';}
+		
+		while ($row = mysql_fetch_assoc($result))
+		{
+			$unidadeProduto = new UnidadeProdutoVO();
+			
+			$unidadeProduto->ID = $row['ID'];
+			$unidadeProduto->EMPRESA_ID = $row['EMPRESA_ID'];
+			$unidadeProduto->NOME = $row['NOME'];
+			$unidadeProduto->PODE_FRACIONAR = $row['PODE_FRACIONAR'];
+			$unidadeProduto->DESCRICAO = $row['DESCRICAO'];
+			
+			$unidadeProdutos[] = $unidadeProduto;
+		}
+		
+		return $unidadeProdutos;
+	}
+	public function popularTabela()
+	{
+		$xml = simplexml_load_file("produtos_dbf.xml");
+	
+			foreach($xml->ROW as $row)
+			{
+			
+				$query = "INSERT INTO estoque_digital 
+				(CODIGO, CODBARRAS, DESCRICAO, UNIDADE, FORNECEDOR, GRUPO, CUSTO, VENDA, ALIQUOTA, ICMS, IPI, 
+				FRETE, ENCARGOS, DARF, LUCRO, LUCRO1, GARANTIA, VENDA_ATAC, SALDO, CADASTRO) VALUES 
+				('$row->CODIGO', '$row->CODBARRAS', '$row->DESCRICAO', '$row->UNIDADE', '$row->FORNECEDOR', 
+				'$row->GRUPO', '$row->CUSTO', '$row->VENDA', '$row->ALIQUOTA', '$row->ICMS', 
+				'$row->IPI', '$row->FRETE', '$row->ENCARGOS', '$row->DARF', '$row->LUCRO', '$row->LUCRO1', 
+				'$row->GARANTIA', '$row->VENDA_ATAC', '$row->SALDO', '$row->CADASTRO')";
+				
+				$result = mysql_query($query);
+			}
+			
+			return 'Sucesso';
+	}
+	
+	public function listarGruposProduto($codEmpresa)
+	{
+		$query = "SELECT * FROM grupo_produto WHERE EMPRESA_ID=$codEmpresa";
+		$result = mysql_query($query);
+		$nRow = mysql_num_rows($result);
+		if($nRow == 0){return 'ERRO';}
+		
+		while ($row = mysql_fetch_assoc($result)) {
+			$grupoProduto = new GrupoProdutoVO();
+			
+			$grupoProduto->ID = $row['ID'];
+			$grupoProduto->EMPRESA_ID = $row['EMPRESA_ID'];
+			$grupoProduto->NOME_GRUPO = $row['NOME_GRUPO'];
+			
+			
+			$grupoProdutos[] = $grupoProduto;
+		}
+		
+		return $grupoProdutos;
+		
+	}
+
+	public function cadastrarGrupoProduto(GrupoProdutoVO $grupoProduto)
+	{
+		$query = "INSERT INTO grupo_produto (EMPRESA_ID, NOME_GRUPO) VALUES ($grupoProduto->EMPRESA_ID, '$grupoProduto->NOME_GRUPO');";
+		if(!$result = mysql_query($query))
+		{
+			return mysql_error();
+		}else{
+			return 'ok';
+		}		
+	}
+	public function editarGrupoProduto(GrupoProdutoVO $grupoProduto)
+	{
+		$query = "UPDATE grupo_produto SET NOME_GRUPO='$grupoProduto->NOME_GRUPO' WHERE ID='$grupoProduto->ID'";
+		if(!$result = mysql_query($query))
+		{
+			return mysql_error();
+		}else{
+			return 'ok';
+		}		
+	}
+	public function excluirGrupoProduto($cod)
+	{
+		$query = "DELETE FROM grupo_produto WHERE ID='$cod'";
+		if(!$result = mysql_query($query))
+		{
+			return mysql_error();
+		}else{
+			return 'ok';
+		}		
+	}
+	public function listarFornecedores($codEmpresa)
+	{
+		$query = "SELECT * FROM fornecedores WHERE EMPRESA_ID=$codEmpresa ORDER by RAZAO_SOCIAL";
+		$result = mysql_query($query);
+		$nRow = mysql_num_rows($result);
+		if($nRow ==0){return 'ERRO';}
+		
+		while ($row = mysql_fetch_assoc($result)) {
+			$fornecedor = new FornecedoresVO();
+			
+			$fornecedor->ID = $row['ID'];
+			$fornecedor->EMPRESA_ID = $row['EMPRESA_ID'];
+			$fornecedor->RAZAO_SOCIAL = $row['RAZAO_SOCIAL'];
+			$fornecedor->FANTASIA = $row['FANTASIA'];
+			$fornecedor->CNPJ = $row['CNPJ'];
+			$fornecedor->ENDERECO = $row['ENDERECO'];
+			$fornecedor->BAIRRO = $row['BAIRRO'];
+			$fornecedor->CIDADE = $row['CIDADE'];
+			$fornecedor->UF = $row['UF'];
+			$fornecedor->CEP = $row['CEP'];
+			$fornecedor->FONE1 = $row['FONE1'];
+			$fornecedor->FONE2 = $row['FONE2'];
+			$fornecedor->FAX = $row['FAX'];
+			$fornecedor->DTPVENDAS = $row['DTPVENDAS'];
+			$fornecedor->EMAIL = $row['EMAIL'];
+			$fornecedor->HOME_PAGE = $row['HOME_PAGE'];
+			$fornecedor->REPRESENTANTE = $row['REPRESENTANTE'];
+			$fornecedor->NOME_REPRESENTANTE = $row['NOME_REPRESENTANTE'];
+			$fornecedor->CONTATO_REPRESENTANTE = $row['CONTATO_REPRESENTANTE'];
+			$fornecedor->CIDADE_REPRESENTATE = $row['CIDADE_REPRESENTATE'];
+			$fornecedor->UF_REPRESENTANTE = $row['UF_REPRESENTANTE'];
+			$fornecedor->FONE1_REPRESENTANTE = $row['FONE1_REPRESENTANTE'];
+			$fornecedor->FONE2_REPRESENTANTE = $row['FONE2_REPRESENTANTE'];
+			$fornecedor->FAX_REPRESENTANTE = $row['FAX_REPRESENTANTE'];
+			$fornecedor->CEL_REPRESENTANTE = $row['CEL_REPRESENTANTE'];
+			$fornecedor->DATA_CADASTRO = $row['DATA_CADASTRO'];
+			
+			$fornecedors[] = $fornecedor;
+		}
+		
+		return $fornecedors;
+	}
+	
+	//PREVENDA
+	public function abrirPreVenda($codEmpresa)
+	{
+		$dataPV = date('Y-m-d');
+		$horaPV = date('h:m:s');
+		
+		$query = "INSERT INTO ecf_pre_venda_cabecalho (EMPRESA_ID, DATA_PV, HORA_PV, SITUACAO, VALOR) VALUES ('$codEmpresa','$dataPV', '$horaPV', 'A', 0);";
+		if(!$result = mysql_query($query))
+		{
+			return mysql_error();
+		}else{
+			
+			//PROCURA ULTIMA PR�-VENDA
+			$queryUltimaPV = "SELECT * FROM ecf_pre_venda_cabecalho ORDER by ID DESC";
+			$resultUltimaPV = mysql_query($queryUltimaPV);
+			$rowUltimaPV = mysql_fetch_assoc($resultUltimaPV);
+			
+			return $rowUltimaPV['ID'];
+		}
+	}
+	public function cadastrarEcfVendaDetalhe(EcfVendaDetalheVO $ecfVD)
+	{
+		$query = "INSERT INTO ecf_pre_venda_detalhe (ID_PRODUTO, ID_ECF_PRE_VENDA_CABECALHO,ORDEM, QUANTIDADE, VALOR_UNITARIO, VALOR_TOTAL, CANCELADO) 
+		VALUES ($ecfVD->ID_PRODUTO, $ecfVD->ID_ECF_PRE_VENDA_CABECALHO,$ecfVD->ORDEM, $ecfVD->QUANTIDADE, $ecfVD->VALOR_UNITARIO, $ecfVD->VALOR_TOTAL, '$ecfVD->CANCELADO')";
+		if(!$result = mysql_query($query))
+		{
+			return 'CADASTRO PRE-VENDA DETALHE - NAO FOI POSSIVEL CADASTRAR PREVENDA DETALHE '.mysql_error();
+		}
+		
+		//BUSCA A QTD ATUAL DO PRODUTO
+		$query0 = "SELECT * FROM produto WHERE ID=$ecfVD->ID_PRODUTO";
+		if(!$result0 = mysql_query($query0))
+		{
+			return 'CADASTRO PRE-VENDA DETALHE - NAO FOI POSSIVEL REALIZAR CONSULTA DE PRODUTO '.mysql_error();
+		}
+		$nRow0 = mysql_num_rows($result0);
+		if($nRow0 == 0)
+		{
+			return 'CADASTRO PRE-VENDA DETALHE - NENHUM PRODUTO LOCALIZADO, BANCO DE DADOS INCOSISTENTE';
+		}
+		$row0 = mysql_fetch_assoc($result0);
+		$QTD_ESTOQUE = explode('.',$row0['QTD_ESTOQUE']); 
+		
+		$QTD_VENDIDA = $ecfVD->QUANTIDADE;
+		$NOVA_QTD_ESTOQUE = $QTD_ESTOQUE[0] - $QTD_VENDIDA;
+		
+		
+		
+		//ATUALIZA QTD DO PRODUTO
+		$query1 = "UPDATE produto SET QTD_ESTOQUE=$NOVA_QTD_ESTOQUE WHERE ID='$ecfVD->ID_PRODUTO'";
+		if(!$result1 = mysql_query($query1))
+		{
+			return 'CADASTRO PRE-VENDA DETALHE - NAO FOI POSSIVEL ATUALIZAR QTD DE PRODUTOS DO ESTOQUE '.mysql_error();
+		}	
+		
+		return 'ok';
+	}
+	public function cancelarEcfVendaDetalhe(EcfVendaDetalheVO $ecfVD)
+	{
+		$query = "UPDATE ecf_pre_venda_detalhe SET CANCELADO='S' WHERE  ID_ECF_PRE_VENDA_CABECALHO=$ecfVD->ID_ECF_PRE_VENDA_CABECALHO
+			AND ORDEM=$ecfVD->ORDEM";
+		$result = mysql_query($query);
+		
+		
+		//BUSCA A QTD ATUAL DO PRODUTO
+		$query0 = "SELECT * FROM produto WHERE ID=$ecfVD->ID_PRODUTO";
+		if(!$result0 = mysql_query($query0))
+		{
+			return 'CADASTRO PRE-VENDA DETALHE - NAO FOI POSSIVEL REALIZAR CONSULTA DE PRODUTO '.mysql_error();
+		}
+		$nRow0 = mysql_num_rows($result0);
+		if($nRow0 == 0)
+		{
+			return 'CADASTRO PRE-VENDA DETALHE - NENHUM PRODUTO LOCALIZADO, BANCO DE DADOS INCOSISTENTE';
+		}
+		$row0 = mysql_fetch_assoc($result0);
+		$QTD_ESTOQUE = explode('.',$row0['QTD_ESTOQUE']); 
+		
+		$QTD_VENDIDA = $ecfVD->QUANTIDADE;
+		$NOVA_QTD_ESTOQUE = $QTD_ESTOQUE[0] + $QTD_VENDIDA;
+		
+		//ATUALIZA QTD DO PRODUTO
+		$query1 = "UPDATE produto SET QTD_ESTOQUE=$NOVA_QTD_ESTOQUE WHERE ID='$ecfVD->ID_PRODUTO'";
+		if(!$result1 = mysql_query($query1))
+		{
+			return 'CADASTRO PRE-VENDA DETALHE - NAO FOI POSSIVEL ATUALIZAR QTD DE PRODUTOS DO ESTOQUE '.mysql_error();
+		}	
+		
+		return 'ok';
+		
+	}
+}

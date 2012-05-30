@@ -1,0 +1,583 @@
+<?php
+
+ini_set('max_execution_time','600000000');
+require_once 'classes/BaseClass.php';
+require_once 'vo/AniversariantesVO.php';
+
+
+class Rotinas extends BaseClass
+{	
+	public function rotinaBloqDesbloqFinanceiro($codEmpresa)
+	{		
+		//----------1 VERIFICA SE EXISTEM BOLETOS PARA SEREM MARCADOS COMO BLOQUEADO
+		//----------
+		
+		//---VERIFICA SE O MÓDULO FINANCEIRO ESTA DISPONÍVEL PARA EMPRESA ATUAL
+		//13-CÓDIGO DO MÓDULO FINANCEIRO
+		$queryVerificaModuloFinanceiro = "SELECT * FROM modulos_empresa WHERE MODULO_ID='13' AND EMPRESA_ID='$codEmpresa'";
+		$resultVerificaModuloFinanceiro = mysql_query($queryVerificaModuloFinanceiro);
+	    $nRowVerificaModuloFinanceiro = mysql_num_rows($resultVerificaModuloFinanceiro);
+		
+		//Caso Módulo Financeiro Esteja Disponível para a Empresa Atual
+		if($nRowVerificaModuloFinanceiro != 0)
+		{
+			//VERIFICA A TOLERANCIA DE BLOQUEIO DO TITULO NA CONTA BANCARIA PADRÃO
+			$queryContaBancaria  = "SELECT * FROM conta_bancaria WHERE EMPRESA_ID=$codEmpresa";
+			$resultContaBancaria = mysql_query($queryContaBancaria);
+			$nRowContaBancaria = mysql_num_rows($resultContaBancaria);
+			if($nRowContaBancaria == 0)
+			{
+				return 'ERRO - NENHUMA CONTA BANCÁRIA FOI LOCALIZADA PARA A EMPRESA ATUAL, PROCESSO CANCELADO';
+			}
+			$rowContaBancaria = mysql_fetch_assoc($resultContaBancaria);
+						
+			//TOLERANCIA DE BLOQUEIO
+			$tolerancia = $rowContaBancaria['TOLERANCIA']; 
+			
+			//VERIFICA BOLETOS EM ATRASO
+			//------------------------------------------
+			$dataHoje = date('Y-m-d');
+			$queryTitulosAtrasados = "SELECT * FROM contas_receber WHERE STATUS_2 = 'ABERTO' 
+													AND DATA_VENCIMENTO < '$dataHoje' AND EMPRESA_ID='$codEmpresa' 
+													AND (BLOQUEAR IS NULL OR BLOQUEAR = '')	ORDER by ID";
+			$resultTitulosAtrasados = mysql_query($queryTitulosAtrasados);
+			$nRowTitulosAtrasados = mysql_num_rows($resultTitulosAtrasados);
+		
+			if($nRowTitulosAtrasados > 0)
+			{
+				while ( $rowTitulosAtrasados = mysql_fetch_assoc($resultTitulosAtrasados)) {
+					
+					$id = $rowTitulosAtrasados['ID'];
+			
+					$dataVencimento = explode('-', $rowTitulosAtrasados['DATA_VENCIMENTO']);
+					$dataAtual = explode('-', $dataHoje);
+					
+					$ano1 = substr($rowTitulosAtrasados['DATA_VENCIMENTO'], 0, 4);
+					$mes1 = substr($rowTitulosAtrasados['DATA_VENCIMENTO'], 5, 2);
+					$dia1 = substr($rowTitulosAtrasados['DATA_VENCIMENTO'], 8, 2);
+					
+					$ano2 = substr($dataHoje, 0, 4);
+					$mes2 = substr($dataHoje, 5, 2);
+					$dia2 = substr($dataHoje, 8, 2);
+					
+					$dataAtual = mktime(0,0,0,$mes2,$dia2,$ano2);
+					$dataBoleto = mktime(0,0,0,$mes1,$dia1,$ano1);  
+					$d3 = ($dataAtual-$dataBoleto);
+					$dias = round(($d3/60/60/24));
+					$prazo = $tolerancia;				
+					
+					if($dias >= 15)
+					{		
+						//echo $id."<br/>";				
+						$queryMarcar = "UPDATE contas_receber SET BLOQUEAR = 'S' WHERE ID ='$id'";
+						if(!$resutlMarcar = mysql_query($queryMarcar))
+						{
+							return 'ROTINA BLOQUEAR - ATUALIZAR TITULO BLOQUEAR '.mysql_error();
+						}
+					}
+					
+					
+				}//WHILE BOLETOS ATRASADOS					
+			}//NROW BOLETOS ATRASADOS
+			
+			
+			
+			
+			
+			
+			
+			
+			
+			//----------2 ROTINA DESBLOQUEAR
+			//----------			
+			//VERIFICA SE EXISTEM BOLETOS PARA DESBLOQUEAR
+			$queryD1 = "SELECT * FROM contas_receber WHERE EMPRESA_ID=$codEmpresa AND DESBLOQUEAR='S' 
+					AND (DESBLOQUEADO != 'S' OR DESBLOQUEADO IS NULL) ORDER by ID";
+			$resultD1 = mysql_query($queryD1);
+			$nRowD1 = mysql_num_rows($resultD1);
+			
+			if($nRowD1 > 0)
+			{
+				while ( $rowD1 = mysql_fetch_assoc($resultD1) ) 
+				{
+					
+					$idBoleto = $rowD1['ID'];
+					$idCliente = $rowD1['CLIENTES_ID'];
+						
+						
+						//---1-VERIFICAR SE O MÓDULO DE ACESSO ESTA DISPONÍVEL PARA A EMPRESA ATUAL, SE TIVER CUMPRE O PASSO 3
+						//COD DO MÓDULO DE ACESSO 12
+						$queryD3 = "SELECT * FROM modulos_empresa WHERE MODULO_ID=12 AND EMPRESA_ID=$codEmpresa";
+						$resultD3 = mysql_query($queryD3);
+						$nRowD3 = mysql_num_rows($resultD3);
+						
+						if($nRowD3 > 0)
+						{
+						
+							//3-TENTA LOCALIZAR CREDENCIAIS DE ACESSO						
+							$queryD4 = "SELECT * FROM acesso_cliente WHERE CLIENTES_ID=$idCliente";
+							$resultD4 = mysql_query($queryD4);
+							$nRowD4 = mysql_num_rows($resultD4);
+							
+							if($nRowD4 > 0)
+							{
+							$rowD4 = mysql_fetch_assoc($resultD4);
+							$idServidor = $rowD4['SERVIDORES_ID'];
+							$idPlano = $rowD4['PLANOS_ACESSO_ID'];
+							$idInterface = $rowD4['INTERFACE_ID'];
+							$username = $rowD4['LOGIN'];
+							
+							//4-TENTA LOCALIZAR SERVIDOR DA CREDENCIAL DO CLIENTE
+							$queryD5 = "SELECT * FROM servidores WHERE ID=$idServidor";
+							$resultD5 = mysql_query($queryD5);
+							$nRowD5 = mysql_num_rows($resultD5);
+							if($nRowD5 == 0)
+							{
+								return 'ROTINA DESBLOQUEAR - ERRO AO LOCALIZAR O SERVIDOR';
+							} 
+							$rowD5 = mysql_fetch_assoc($resultD5);
+							//DADOS DO SERVIDOR
+							$ip = $rowD5['ENDERECO_IP'];
+							$usuario = $rowD5['USUARIO'];
+							$senha = $rowD5['SENHA'];
+							$porta = $rowD5['PORTA_API'];
+							
+							//5-TENTA LOCALIZAR A INTERFACE DA CREDENCIAL DO CLIENTE
+							$queryD6 = "SELECT * FROM interface WHERE ID=$idInterface";
+							$resultD6 = mysql_query($queryD6);
+							$nRowD6 = mysql_num_rows($resultD6);
+							if($nRowD6 == 0){
+								return 'ROTINA DESBLOQUEAR - ERRO AO LOCALIZAR A INTERFACE DO CLIENTE';						
+							}
+							$rowD6 = mysql_fetch_assoc($resultD6);
+							
+							//DEFINE TIPO DE AUTENTICACAO
+							if($rowD6['HOSTPOT'] == 1)
+							{
+								$tipoAutenBanda = 1;
+							}
+							if($rowD6['PPOE'] == 1)
+							{
+								$tipoAutenBanda = 2;
+							}
+							if($rowD6['SIMPLES_QUEUE'] == 1)
+							{
+								$tipoAutenBanda = 3;
+							}
+							if($rowD6['HOTSPOT_RADIUS'] == 1)
+							{
+								$tipoAutenBanda = 4;
+							}	
+							
+							
+							//RECUPERA ID PLANO REAL DO CLIENTE
+							$queryD7 = "SELECT * FROM clientes_bloqueado WHERE CLIENTES_ID=$idCliente";
+							$resultD7 = mysql_query($queryD7);
+						    $nRowD7 = mysql_num_rows($resultD7);
+							if($nRowD7 != 0)
+							{						
+								$rowD7 = mysql_fetch_assoc($resultD7);
+								$idPlanoReal = $rowD7['PLANOS_ACESSO_ID'];
+								
+								//PROCURA O NOME DO PLANO REAL DO CLIENTE
+								$queryD8 = "SELECT * FROM planos_acesso WHERE ID=$idPlanoReal";
+								$resultD8 = mysql_query($queryD8);
+								$nRowD8 = mysql_num_rows($resultD8);
+								if($nRowD8 == 0)
+								{
+									return 'ROTINA DESBLOQUEAR - NAO FOI POSSIVEL RECUPERAR O NOME PLANO DE ACESSO REAL DO CLIENTE';
+								}
+								$rowD8 = mysql_fetch_assoc($resultD8);
+								$nomePlanoReal = $rowD8['NOME'];
+								
+								//-ATUALIZA PLANO PARA PLANO REAL
+								if($tipoAutenBanda == 4)
+								{								
+									//BUSCAR SERVIDOR RADIUS ASSOCIADO;
+								   $query6 = "SELECT * FROM servidores_radius WHERE ID=$idServidor";
+								   $result6 = mysql_query($query6);
+								   $nRow6 = mysql_num_rows($result6);
+								   if($nRow6 == 0){
+								   		return 'ROTINA DESBLOQUEAR - SERVIDOR RADIUS NAO ENCONTRADO';							   	
+								   	}
+								   $row6 = mysql_fetch_assoc($result6);
+				   
+								   //DEFINE PARAMETROS DO SERVIDOR RADIUS
+								   $ipRadius = $row6['IP_FREERADIUS'];
+								   $userMysql = $row6['USERNAME_MYSQL'];
+								   $senhaMysql = $row6['PASSWORD_MYSQL'];
+								   $bancoMysql = $row6['BANCO_DADOS'];							   
+		
+								   //TENTA CONECTAR AO SERVIDOR MYSQL
+								   if($con = mysql_pconnect($ipRadius, $userMysql, $senhaMysql))
+								   {
+									mysql_select_db($bancoMysql);
+									$NomePlano = $idInterface.'_'.$nomePlanoReal;
+									$query6 = "UPDATE radusergroup SET groupname='$NomePlano' WHERE username LIKE '$username'";
+									if(!$result6 = mysql_query($query6))
+									{
+										return 'ROTINA DESBLOQUEAR - NAO FOI POSSIVEL ATULIZAR PLANO DE ACESSO NO SERVIDOR RADIUS REMOTO '.mysql_error();
+									}
+								   }else{
+								   		return 'ROTINA DESBLOQUEAR - NAO FOI POSSIVEL CONECTAR AO SERVIDOR RADIUS REMOTO '.mysql_error();
+								   }
+								   
+								   mysql_close($con);
+									
+								}
+								//RETORNA PARA SERVIDOR MYSQL LOCAL
+								
+								new BaseClass();
+															
+								//ATUALIZA CREDENCIAL DE ACESSO PARA PLANO REAL
+								$query8 = "UPDATE acesso_cliente SET PLANOS_ACESSO_ID=$idPlanoReal WHERE CLIENTES_ID=$idCliente";
+								if(!$result8 = mysql_query($query8))
+								{
+									return 'ROTINA DESBLOQUEAR - NAO FOI POSSIVEL ATUALIZAR A CREDENCIAL DO CLIENTE '.mysql_error();
+								}					
+									
+									$query10 = "DELETE FROM clientes_bloqueado WHERE CLIENTES_ID=$idCliente";
+									if(!$result10 = mysql_query($query10))
+									{
+										return 'ROTINA DESBLOQUEAR - ERRO AO DELETAR CLIENTE NA LISTA DE BLOQUEADOS '.mysql_error();
+									}
+								}//N_ROW LISTA CLIENTES BLOQUEADOS						
+							}//N_ROW CREDENCIAIS DE ACESSO
+							}//N_ROW MÓDULO DE ACESSO DISPONÍVEL	
+						 		
+						
+						//ATUALIZAR TITULO COMO DESBLOQUEADO
+						$queryD2 = "UPDATE contas_receber SET DESBLOQUEADO='S' WHERE ID='$idBoleto'";
+						if(!$resultD2 = mysql_query($queryD2))
+						{
+							return 'ROTINA DESBLOQUEAR -	ERRO AO ATUALIZAR CONTAS_RECEBER DESBLOQUEADO '.mysql_error();
+						}	
+									
+				}//FIM WHILE BOLETOS A SEREM DESBLOQUEADOS				 
+			}//FIM DO NUM_ROWS BOLETOS A SEREM DESBLOQUEADOS
+		
+		
+		
+		
+		
+			
+		
+			
+			//----------3 ROTINA BLOQUEIO
+			//----------
+			
+				
+			//VERIFICA SE EXISTEM BOLETOS PARA BLOQUEAR
+			$queryBoletosBloquear = "SELECT * FROM contas_receber WHERE EMPRESA_ID=$codEmpresa AND BLOQUEAR='S' 
+													AND (BLOQUEADO != 'S' OR BLOQUEADO IS NULL)  AND STATUS_2 = 'ABERTO' ORDER by ID";
+			$resultBoletosBloquear = mysql_query($queryBoletosBloquear);
+			$nRowBoletosBloquear = mysql_num_rows($resultBoletosBloquear);
+			
+			
+			if($nRowBoletosBloquear > 0)
+			{
+				while ( $rowBoletosBloquear = mysql_fetch_assoc($resultBoletosBloquear) ) 
+				{
+						//DADOS DO BOLETO					
+						$idCliente = $rowBoletosBloquear['CLIENTES_ID'];
+						$idBoleto = $rowBoletosBloquear['ID'];
+						
+					
+						//1-VERIFICAR SE O MÓDULO DE ACESSO ESTA DISPONÍVEL PARA A EMPRESA ATUAL, SE TIVER CUMPRE O PASSO 3
+						$query2 = "SELECT * FROM modulos_empresa WHERE MODULO_ID=12 AND EMPRESA_ID=$codEmpresa";
+						$result2 = mysql_query($query2);
+						$nRow2 = mysql_num_rows($result2);
+						if($nRow2 > 0)
+						{
+								//2-TENTA LOCALIZAR CREDENCIAIS DE ACESSO
+								
+								$query3 = "SELECT * FROM acesso_cliente WHERE CLIENTES_ID=$idCliente";
+								$result3 = mysql_query($query3);
+								$nRow3 = mysql_num_rows($result3);
+								if($nRow3 > 0)
+								{
+									//DADOS DE ACESSO
+									$row3 = mysql_fetch_assoc($result3);
+									$idServidor = $row3['SERVIDORES_ID'];
+									$idPlano = $row3['PLANOS_ACESSO_ID'];
+									$idInterface = $row3['INTERFACE_ID'];
+									$username = $row3['LOGIN'];
+									
+									//3-TENTA LOCALIZAR SERVIDOR DA CREDENCIAL DO CLIENTE
+									$query4 = "SELECT * FROM servidores WHERE ID=$idServidor";
+									$result4 = mysql_query($query4);
+									$nRow4 = mysql_num_rows($result4);
+									if($nRow4 == 0)
+									{
+										return 'ROTINA BLOQUEAR - ERRO AO LOCALIZAR O SERVIDOR';
+									} 
+									$row4 = mysql_fetch_assoc($result4);
+									//DADOS DO SERVIDOR
+									$ip = $row4['ENDERECO_IP'];
+									$usuario = $row4['USUARIO'];
+									$senha = $row4['SENHA'];
+									$porta = $row4['PORTA_API'];
+									
+									//5-TENTA LOCALIZAR A INTERFACE DA CREDENCIAL DO CLIENTE
+									$query5 = "SELECT * FROM interface WHERE ID=$idInterface";
+									$result5 = mysql_query($query5);
+									$nRow5 = mysql_num_rows($result5);
+									if($nRow5 == 0){
+										return 'ROTINA BLOQUEAR - ERRO AO LOCALIZAR A INTERFACE DO CLIENTE';							
+									}
+									$row5 = mysql_fetch_assoc($result5);
+									
+									//DEFINE TIPO DE AUTENTICACAO
+									if($row5['HOSTPOT'] == 1)
+									{
+										$tipoAutenBanda = 1;
+									}
+									if($row5['PPOE'] == 1)
+									{
+										$tipoAutenBanda = 2;
+									}
+									if($row5['SIMPLES_QUEUE'] == 1)
+									{
+										$tipoAutenBanda = 3;
+									}
+									if($row5['HOTSPOT_RADIUS'] == 1)
+									{
+										$tipoAutenBanda = 4;
+									}	
+									
+									
+									//PROCURA POR ID DO PLANO BLOQUEADO DA INTERFACE SELECIONADA
+									$query7 = "SELECT * FROM planos_acesso WHERE NOME LIKE 'BLOQUEADO' AND INTERFACE_ID=$idInterface";
+									$result7 = mysql_query($query7);
+									$nRow7 = mysql_num_rows($result7);
+									if($nRow7 == 0)
+									{
+										return 'ROTINA BLOQUEAR - NAO FOI POSSIVEL ACHAR O PLANO DE ACESSO BLOQUEADO NA INTERFACE SELECIONADA';
+									}
+									$row7 = mysql_fetch_assoc($result7);
+									$idPlanoBloqueado = $row7['ID'];
+									$NomePlano = $idPlanoBloqueado.'_BLOQUEADO';	
+																
+									//TIPO DE AUTENTICAÇÃO E BANDA 4 - HOTSPOT_RADIUS
+									if($tipoAutenBanda == 4)
+									{
+										
+										//BUSCAR SERVIDOR RADIUS ASSOCIADO;
+									   $query6 = "SELECT * FROM servidores_radius WHERE ID=$idServidor";
+									   $result6 = mysql_query($query6);
+									   $nRow6 = mysql_num_rows($result6);
+									   if($nRow6 == 0)
+									   {
+									   		return 'ROTINA BLOQUEAR - SERVIDOR RADIUS NAO ENCONTRADO';
+									   	}
+									  $row6 = mysql_fetch_assoc($result6);
+					   
+									   //DEFINE PARAMETROS DO SERVIDOR RADIUS
+									   $ipRadius = $row6['IP_FREERADIUS'];
+									   $userMysql = $row6['USERNAME_MYSQL'];
+									   $senhaMysql = $row6['PASSWORD_MYSQL'];
+									   $bancoMysql = $row6['BANCO_DADOS'];
+									   
+			
+									   //TENTA CONECTAR AO SERVIDOR MYSQL
+									   if($con = mysql_pconnect($ipRadius, $userMysql, $senhaMysql))
+									   {
+										mysql_select_db($bancoMysql);
+										$query6 = "UPDATE radusergroup SET groupname='$NomePlano' WHERE username LIKE '$username'";
+										if(!$result6 = mysql_query($query6))
+										{
+											return 'ROTINA BLOQUEAR - NAO FOI POSSIVEL ATULIZAR PLANO DE ACESSO NO SERVIDOR RADIUS REMOTO '.mysql_error();
+										}
+									   }else{
+									   		return 'ROTINA BLOQUEAR - NAO FOI POSSIVEL CONECTAR AO SERVIDOR RADIUS REMOTO '.mysql_error();
+									   }
+									   
+									   mysql_close($con);
+										
+									}//TIPO DE AUTENTICAÇÃO E BANDA 4 - HOTSPOT_RADIUS
+									
+									
+									//RETORNA PARA SERVIDOR MYSQL LOCAL									
+									new BaseClass();
+																	
+									
+									//ATUALIZA CREDENCIAL DE ACESSO PARA BLOQUEADO
+									$query8 = "UPDATE acesso_cliente SET PLANOS_ACESSO_ID=$idPlanoBloqueado WHERE CLIENTES_ID=$idCliente";
+									if(!$result8 = mysql_query($query8))
+									{
+										return 'ROTINA BLOQUEAR - NAO FOI POSSIVEL ATUALIZAR A CREDENCIAL DO CLIENTE '.mysql_error();
+									}					
+										
+									//4-ATUALIZA LISTA DE CLIENTES BLOQUEADOS
+									$query9 = "SELECT * FROM clientes_bloqueado WHERE CLIENTES_ID=$idCliente";
+									$result9 = mysql_query($query9);
+									$nRow9 = mysql_num_rows($result9);
+									if($nRow9 == 0)
+									{
+										$query10 = "INSERT INTO clientes_bloqueado (CLIENTES_ID, PLANOS_ACESSO_ID) VALUES ($idCliente, $idPlano)";
+										if(!$result10 = mysql_query($query10))
+										{
+											return 'ROTINA BLOQUEIO - ERRO AO CADASTRAR CLIENTE EM LISTA DE BLOQUEADOS';
+										}
+									}//NROW CLIENTES BLOQUEADOS								
+								}//NROW ACESSO CLIENTE 					
+						}//N_ROW MÓDULO ACESSO
+								
+						//ATUALIZAR TITULO COMO BLOQUEADO
+						$query1 = "UPDATE contas_receber SET BLOQUEADO='S' WHERE ID='$idBoleto'";
+						if(!$result1 = mysql_query($query1))
+						{
+							return 'ROTINA BLOQUEAR -	ERRO AO ATUALIZAR CONTAS_RECEBER BLOQUEADO '.mysql_error();
+						}						
+					//5-ABRE CRM DE INFORMANDO ATRASO DE CLIENTES								
+				}//WHILE BOLETOS A BLOQUEAR				
+			}//NUM_ROW_BOLETOS A BLOQUEAR	
+		}//CASE MODULO FIANCEIRO
+		
+		return 'ok';
+	}
+	
+	public function listarAniversriantes()
+	{
+		$datahoje = date("d/m/");
+		$datahoje1 = date("dm");
+		$query = "SELECT * FROM pessoa WHERE (dataNascimento LIKE '$datahoje%' OR dataNascimento LIKE '$datahoje1%' )";
+		$result = mysql_query($query);
+		$nrows = mysql_num_rows($result);
+		
+		if($nrows === 0)
+		{
+			return "Nenhum Aniversariante foi Encontrado";
+		}else
+		{
+		while($row = mysql_fetch_assoc($result))
+		{
+			$cliente = new AniversariantesVO();
+			
+			$cliente->codigoPessoa = $row['codigoPessoa'];
+			$cliente->tratamento = $row['tratamento'];
+			$cliente->textoNome = $row['textoNome'];
+			$cliente->telefone = $row['telefone'];
+			$cliente->telefone2 = $row['telefone2'];
+			$cliente->celular1 = $row['celular1'];
+			$cliente->celular2 = $row['celular2'];
+			$cliente->email = $row['email'];
+			
+			$clientes[] = $cliente;
+		}
+		
+			return $clientes;
+			
+		}
+		
+	}
+	public function verificarAtrasoBoletos()
+	{
+		$dataHoje = date('Y-m-d');
+		$query = "SELECT * FROM contasapagar WHERE status = 'ABERTO' AND vencimento < '$dataHoje' AND bloqueado is NULL";
+		$result = mysql_query($query);
+		
+		//CONSULTAR PRAZO LIMITE DE BLOQUEIO
+		$queryPrazoBloqueio = "SELECT * FROM bloqueio";
+		$resultPrazoBloqueio = mysql_query($queryPrazoBloqueio);
+		$row_bloqueio = mysql_fetch_assoc($resultPrazoBloqueio);
+		
+		while ($row = mysql_fetch_assoc($result)) {
+			
+			$id = $row['id'];
+			
+			$dataVencimento = explode('-', $row['vencimento']);
+			$dataAtual = explode('-', $dataHoje);
+			
+			$dataAtual = mktime(0,0,0,$dataAtual[1],$dataAtual[2],$dataAtual[0]);
+			$dataBoleto = mktime(0,0,0,$dataVencimento[1],$dataVencimento[2],$dataVencimento[0]);  
+			$d3 = ($dataAtual-$dataBoleto);
+			$dias = round(($d3/60/60/24));
+			$prazo = $row_bloqueio['dias'];
+			
+			if($dias >= $prazo)
+			{
+				$queryMarcar = "UPDATE contasapagar SET bloquear = 'S' WHERE id ='$id'";
+				$resutlMarcar = mysql_query($queryMarcar);
+			}
+			
+		}
+		
+		return 'OK';
+	}
+	public function bloquear()
+	{
+		$query = "SELECT contasapagar.*, pessoa.codigoPessoa, pessoa.loginCliente  FROM contasapagar 
+		LEFT JOIN pessoa ON contasapagar.cliente = pessoa.codigoPessoa
+		WHERE bloquear = 'S' AND desbloqueado IS NULL";
+		$result = mysql_query($query);
+		
+		while ($row = mysql_fetch_assoc($result)) {
+			
+			$id = $row['id'];
+			$idCliente = $row['cliente'];
+			$username = $row['loginCliente'];
+			
+			//ATUALIZA BOLETO PARA BLOQUEADO
+			$queryUpdate = "UPDATE contasapagar SET bloqueado = 'S' WHERE id ='$id'";
+			$resultUpdate = mysql_query($queryUpdate);
+			
+			//ATUALIZAR CAMPO planoCliente PARA PLANO UTILIZADO NO MOMENTO
+			$queryUpdate2 = "UPDATE pessoa SET planoCliente = 'bloqueado' WHERE codigoPessoa = '$idCliente'";
+			$resultUpdate2 = mysql_query($queryUpdate2);
+			
+			//ATUALIZAR CAMPO value PARA PLANO UTILIZADO NO MOMENTO
+			$queryUpdate3 = "UPDATE radreply SET value = 'bloqueado' WHERE username = '$username'";
+			$resultUpdate3 = mysql_query($queryUpdate3);			
+			
+		}
+		
+		return 'OK';
+	}
+	
+	public function desbloquear()
+	{
+		
+		$dataHoje = date('Y-m-d');
+		
+		//$queryBoletos = "SELECT * FROM contasapagar WHERE status = 'FECHADO' AND desbloquear = 'S' AND desbloqueado is null";
+		$queryBoletos = "SELECT contasapagar.*, pessoa.codigoPessoa, pessoa.loginCliente, pessoa.plano  FROM contasapagar 
+		LEFT JOIN pessoa ON contasapagar.cliente = pessoa.codigoPessoa
+		WHERE desbloquear = 'S' AND desbloqueado is null";
+		$resultBoletos = mysql_query($queryBoletos);
+		
+	 	while ($rowBoletos = mysql_fetch_assoc($resultBoletos))
+	 	{
+	 		$id = $rowBoletos['id'];
+			$idCliente = $rowBoletos['cliente'];
+			$username = $rowBoletos['loginCliente'];
+			$plano = $rowBoletos['plano'];
+			
+			if($plano == '')
+			{
+				$plano = '300k';
+			}
+			
+			//ATUALIZA BOLETO PARA BLOQUEADO
+			$queryUpdate = "UPDATE contasapagar SET desbloqueado = 'S' WHERE id ='$id'";
+			$resultUpdate = mysql_query($queryUpdate);
+			
+			
+			//ATUALIZAR CAMPO planoCliente PARA PLANO UTILIZADO NO MOMENTO
+			$queryUpdate2 = "UPDATE pessoa SET planoCliente = '$plano' WHERE codigoPessoa = '$idCliente'";
+			$resultUpdate2 = mysql_query($queryUpdate2);
+			
+			//ATUALIZAR CAMPO value PARA PLANO UTILIZADO NO MOMENTO
+			$queryUpdate3 = "UPDATE radreply SET value = '$plano' WHERE username = '$username'";
+			$resultUpdate3 = mysql_query($queryUpdate3);
+	 	}		
+		
+			
+			
+			return $msg = 'OK';
+			
+			
+	}
+
+	
+}

@@ -1,0 +1,53 @@
+K 25
+svn:wc:ra_dav:version-url
+V 57
+/svn/OpusWeb/!svn/ver/477/OpusWeb-PHPv2/Zend/Auth/Adapter
+END
+DbTable.php
+K 25
+svn:wc:ra_dav:version-url
+V 69
+/svn/OpusWeb/!svn/ver/477/OpusWeb-PHPv2/Zend/Auth/Adapter/DbTable.php
+END
+Exception.php
+K 25
+svn:wc:ra_dav:version-url
+V 71
+/svn/OpusWeb/!svn/ver/477/OpusWeb-PHPv2/Zend/Auth/Adapter/Exception.php
+END
+OpenId.php
+K 25
+svn:wc:ra_dav:version-url
+V 68
+/svn/OpusWeb/!svn/ver/477/OpusWeb-PHPv2/Zend/Auth/Adapter/OpenId.php
+END
+Digest.php
+K 25
+svn:wc:ra_dav:version-url
+V 68
+/svn/OpusWeb/!svn/ver/477/OpusWeb-PHPv2/Zend/Auth/Adapter/Digest.php
+END
+Http.php
+K 25
+svn:wc:ra_dav:version-url
+V 66
+/svn/OpusWeb/!svn/ver/477/OpusWeb-PHPv2/Zend/Auth/Adapter/Http.php
+END
+Interface.php
+K 25
+svn:wc:ra_dav:version-url
+V 71
+/svn/OpusWeb/!svn/ver/477/OpusWeb-PHPv2/Zend/Auth/Adapter/Interface.php
+END
+Ldap.php
+K 25
+svn:wc:ra_dav:version-url
+V 66
+/svn/OpusWeb/!svn/ver/477/OpusWeb-PHPv2/Zend/Auth/Adapter/Ldap.php
+END
+InfoCard.php
+K 25
+svn:wc:ra_dav:version-url
+V 70
+/svn/OpusWeb/!svn/ver/477/OpusWeb-PHPv2/Zend/Auth/Adapter/InfoCard.php
+END

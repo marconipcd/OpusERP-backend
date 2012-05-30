@@ -1,0 +1,87 @@
+<?php
+
+require_once 'classes/BaseClass.php';
+require_once 'vo/LoginVO.php';
+require_once 'vo/UsuarioVO.php';
+
+class  Login extends BaseClass
+{
+	public function AlterarSenha($codUser, $senha)
+	{
+		$passwordMD5 =  md5($senha);
+		$query = "UPDATE usuario SET PASSWORD_2='$passwordMD5' WHERE ID='$codUser'";
+		$result = mysql_query($query);
+	}
+	
+	public function Logar(UsuarioVO $usuario)
+	{
+		$passwordMD5 =  md5($usuario->PASSWORD_2);
+		$query = "SELECT * 
+			FROM usuario
+			WHERE USERNAME LIKE '$usuario->USERNAME'
+			AND PASSWORD_2 LIKE '$passwordMD5'
+			LIMIT 0 , 1";
+		
+		$result = mysql_query($query);
+		$nrow = mysql_num_rows($result);
+		$row = mysql_fetch_assoc($result);
+		
+		if($nrow > 0)
+		{
+			$usuario = new UsuarioVO();
+			$usuario->ID = $row['ID'];
+			$usuario->USERNAME = $row['USERNAME'];
+			$usuario->PASSWORD_2 = $row['PASSWORD_2'];
+			$usuario->FUNCAO = $row['FUNCAO'];
+			
+			return $usuario;
+		}else
+		{
+			return 'ERRO';
+		}
+	}
+	
+	public function EmpresaUsuario($codUSuario)
+	{
+		$query = "SELECT *
+				FROM empresas_usuario
+				WHERE USUARIO_ID ='$codUSuario'";
+		$result = mysql_query($query);
+		
+		
+		while ($row = mysql_fetch_assoc($result))
+		{
+			$ID_EMPRESA = $row['EMPRESA_ID'];
+			$query2 = "SELECT *
+				FROM empresa
+				WHERE ID ='$ID_EMPRESA'";
+			$result2 = mysql_query($query2);
+			$row2 = mysql_fetch_assoc($result2);
+			
+			$empresa = new empresaVO();
+			$empresa->ID = $row2['ID'];
+			$empresa->RAZAO_SOCIAL= $row2['RAZAO_SOCIAL'];
+			$empresa->NOME_FANTASIA= $row2['NOME_FANTASIA'];
+			$empresa->CNPJ= $row2['CNPJ'];
+			$empresa->INSCRICAO_ESTADUAL= $row2['INSCRICAO_ESTADUAL'];
+			$empresa->INSCRICAO_MUNICIPAL= $row2['INSCRICAO_MUNICIPAL'];
+			$empresa->MATRIZ_FILIAL= $row2['MATRIZ_FILIAL'];
+			$empresa->ENDERECO= $row2['ENDERECO'];
+			$empresa->COMPLEMENTO= $row2['COMPLEMENTO'];
+			$empresa->BAIRRO= $row2['BAIRRO'];
+			$empresa->CIDADE= $row2['CIDADE'];
+			$empresa->UF= $row2['UF'];
+			$empresa->CEP= $row2['CEP'];
+			$empresa->FONE1= $row2['FONE1'];
+			$empresa->FONE2= $row2['FONE2'];
+			$empresa->DATA_CADASTRO= $row2['DATA_CADASTRO'];		
+			
+			$empresas[] = $empresa;
+		}
+		
+		
+		return $empresas;
+	}
+		
+}
+

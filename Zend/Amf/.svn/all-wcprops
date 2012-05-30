@@ -1,0 +1,35 @@
+K 25
+svn:wc:ra_dav:version-url
+V 48
+/svn/OpusWeb/!svn/ver/477/OpusWeb-PHPv2/Zend/Amf
+END
+Constants.php
+K 25
+svn:wc:ra_dav:version-url
+V 62
+/svn/OpusWeb/!svn/ver/477/OpusWeb-PHPv2/Zend/Amf/Constants.php
+END
+Exception.php
+K 25
+svn:wc:ra_dav:version-url
+V 62
+/svn/OpusWeb/!svn/ver/477/OpusWeb-PHPv2/Zend/Amf/Exception.php
+END
+Response.php
+K 25
+svn:wc:ra_dav:version-url
+V 61
+/svn/OpusWeb/!svn/ver/477/OpusWeb-PHPv2/Zend/Amf/Response.php
+END
+Server.php
+K 25
+svn:wc:ra_dav:version-url
+V 59
+/svn/OpusWeb/!svn/ver/477/OpusWeb-PHPv2/Zend/Amf/Server.php
+END
+Request.php
+K 25
+svn:wc:ra_dav:version-url
+V 60
+/svn/OpusWeb/!svn/ver/477/OpusWeb-PHPv2/Zend/Amf/Request.php
+END

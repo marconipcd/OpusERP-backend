@@ -1,0 +1,108 @@
+<?php
+
+require_once 'classes/BaseClass.php';
+
+require_once 'vo/ProdutosVO.php';
+
+class Produtos extends BaseClass
+{
+	//-------------------Metodo para Listar Todos os Produtos Cadastrados-------------------------//
+	public function listarProdutos()
+	{
+		$query = "SELECT * FROM estoque ORDER by desc_produto ASC";
+		$result = mysql_query($query);
+		
+		while ($row = mysql_fetch_assoc($result))
+		{
+			$produto = new ProdutosVO();
+			
+			$produto->id = $row['id'];
+			$produto->desc_produto = $row['desc_produto'];
+			$produto->valor_produto = $row['valor_produto'];
+			$produto->qtd_em_estoque = $row['qtd_em_estoque'];
+			$produto->qtd_minima = $row['qtd_minima'];
+			$produto->total_valor = $row['total_valor'];
+			
+			$produtos[] = $produto;
+		}
+		
+		mysql_free_result($result);
+
+		return $produtos;
+	}
+	
+		public function listarProdutosCliente($idCliente)
+	{
+		//----Pegar id, produto-------------//
+		$query = "SELECT produtos_clientes. *, estoque. *  FROM produtos_clientes INNER JOIN estoque ON 
+		produtos_clientes.id_produto = estoque.id WHERE produtos_clientes.id_cliente = '$idCliente'";
+		
+		$result = mysql_query($query);
+	
+		
+				
+		$qtd = mysql_num_rows($result);
+		
+			if($qtd > 0)
+			{
+					while ($row = mysql_fetch_assoc($result))
+					{
+					$produto = new ProdutosVO();
+					
+					$produto->id = $row['id'];
+					$produto->desc_produto = $row['desc_produto'];
+					$produto->valor_produto = $row['valor_produto'];
+					$produto->qtd_em_estoque = $row['qtd_em_estoque'];
+					$produto->qtd_minima = $row['qtd_minima'];
+					$produto->total_valor = $row['total_valor'];
+					//$produto->AntenaCliente = $row['antena'];
+					
+					$produtos[] = $produto;
+					}
+			}
+			else 
+			{
+					$produto = new ProdutosVO();
+					
+					$produto->id = '0';
+					$produto->desc_produto = 'Nenhum Registro Encontrado';
+					//$produto->AntenaCliente = $row['antena'];
+					
+					$produtos[] = $produto;
+			}
+		
+		mysql_free_result($result);
+
+		return $produtos;
+	}
+	//-------------------Metodo para Cadastrar Produto------------------------------------------//
+	public function cadastrarProduto($desc_produto, $valor_produto, $qtd_em_estoque,$qtd_minima)
+	{
+		$consultaDescricao = "SELECT * FROM estoque WHERE desc_produto = '$desc_produto'";
+		$result2 = mysql_query($consultaDescricao);
+		$row = mysql_fetch_assoc($result2);
+		
+		//echo $row['desc_produto'];
+			
+			if($row == '')
+			{
+				$valor_total = $valor_produto * $qtd_em_estoque;
+				$query = "INSERT INTO estoque (id ,desc_produto ,valor_produto ,qtd_em_estoque ,qtd_minima ,total_valor)VALUES (NULL , '$desc_produto', '$valor_produto', '0', '$qtd_minima', '$valor_total')";
+				$result = mysql_query($query);
+				
+				return 'Cadastrado Com Sucesso';
+			}else 
+			{
+				return 'Erro: Já Existe um produto Cadastrado com a Mesma Descrição';
+			}
+		
+	}
+	//---------------------Excluir Produto------------------------------------------------------//
+	public function excluirProduto($id)
+	{
+		$query = "DELETE FROM estoque WHERE id = '$id'";
+		$result = mysql_query($query);
+	}
+	//---------------------Atualizar Quantidade------------------------------------------------//
+	
+}

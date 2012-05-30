@@ -1,0 +1,53 @@
+<?php
+
+class InfoFinanceiraVO
+{
+	public $id; 	
+	public $codigocliente; 	
+	public $siatuacaospc; 	
+	public $ultimaconsultaspc; 	
+	public $situacaoserasa; 	
+	public $ultimaconsultaserasa; 	
+	public $naturalidade; 	
+	public $nacionalidade; 	
+	public $residencia; 	
+	public $temporesidencia; 	
+	public $estadocivil; 	
+	public $nfilhos; 	
+	public $valoraluguel; 	
+	public $conjuge; 	
+	public $nomepai; 	
+	public $nomemae; 	
+	public $empresatrabalha; 	
+	public $dataadmissao; 	
+	public $carteiraprofissional; 	
+	public $profissao; 	
+	public $cargo; 	
+	public $cepempresa; 	
+	public $enderecoempresa; 	
+	public $numeroempresa; 	
+	public $complementoempresa; 	
+	public $bairroempresa; 	
+	public $cidadeempresa; 	
+	public $ufempresa; 	
+	public $paisempresa; 	
+	public $refenciaempresa; 	
+	public $referenciacomercial1; 	
+	public $refTelefone1; 	
+	public $refContato1; 	
+	public $referenciacomercial2; 	
+	public $refTelefone2; 	
+	public $refContato2; 	
+	public $referenciacomercial3; 	
+	public $refTelefone3; 	
+	public $refContato3; 	
+	public $banco; 	
+	public $agencia; 	
+	public $fone;
+	public $dataabertura; 	
+	public $rendamensal; 	
+	public $limitecredito; 	
+	public $saldolimitecredito; 	
+	public $valorreceber; 	
+	public $valoratraso;
+}

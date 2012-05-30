@@ -1,0 +1,13 @@
+<?php
+
+require_once 'classes/BaseClass.php';
+require_once 'vo/FormasPgtoVO.php';
+
+class FormasPgto extends BaseClass
+{
+	
+	
+	
+	
+	
+}

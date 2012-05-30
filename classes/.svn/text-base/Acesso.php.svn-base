@@ -1,0 +1,3914 @@
+<?php
+
+require_once 'classes/BaseClass.php';
+require_once 'classes/routeros_api.php';
+require_once 'classes/PHPTelnet.php';
+
+require_once 'vo/AcessoClienteVO.php';
+require_once 'vo/HistoricoAcessoVO.php';
+require_once 'vo/ConsumoBandaVO.php';
+require_once 'vo/ClientesVO.php';
+require_once 'vo/InterfacesVO.php';
+require_once 'vo/ContratosAcessoVO.php';
+require_once 'vo/PlanosAcessoVO.php';
+require_once 'vo/ServidoresRadiusVO.php';
+require_once 'vo/RadacctVO.php';
+
+class Acesso extends BaseClass
+{
+	public function listarAcesso($codEmpresa)
+	{
+		
+		$query = "SELECT acesso_cliente. * , clientes.NOME_RAZAO
+			FROM acesso_cliente LEFT JOIN clientes ON clientes.ID = acesso_cliente.CLIENTES_ID WHERE acesso_cliente.EMPRESA_ID = '$codEmpresa'
+			ORDER by acesso_cliente.ID DESC";
+		$result = mysql_query($query);
+		$nRow = mysql_num_rows($result);
+		if($nRow == 0){return 'ERRO';}
+		
+				
+		while ($row = mysql_fetch_assoc($result)) {
+    		
+						
+			
+			$acesso = new AcessoVO();
+							
+			$acesso->ID = $row['ID']; 
+			$acesso->EMPRESA_ID = $row['EMPRESA_ID'];
+			$acesso->CLIENTES_ID = $row['CLIENTES_ID'];
+			$acesso->NOME_RAZAO = $row['NOME_RAZAO'];
+			$acesso->LOGIN = $row['LOGIN'];
+			$acesso->SENHA = $row['SENHA'];
+			$acesso->ENDERECO_IP = $row['ENDERECO_IP'];
+			$acesso->ENDERECO_MAC = $row['ENDERECO_MAC'];
+			$acesso->PLANO_ACESSO = $row['PLANO_ACESSO'];
+			$acesso->BASE = $row['BASE'];
+			$acesso->CONTRATO = $row['CONTRATO'];
+			$acesso->REGIME = $row['REGIME'];
+			$acesso->MATERIAL_ACESSO = $row['MATERIAL_ACESSO'];
+						
+			$acessos[] = $acesso;
+		}
+		
+						
+		return $acessos;
+	}
+	public function listarClientesSemAcesso($codEmpresa)
+	{
+		$query = "SELECT * FROM clientes WHERE STATUS_2 = 'ATIVO' AND EMPRESA_ID = '$codEmpresa' ORDER by NOME_RAZAO ASC";
+		$result = mysql_query($query);
+		
+		
+		
+		while ($row = mysql_fetch_assoc($result)) {
+
+			$codCliente = $row['ID'];
+			//VERIFICAR SE TEM ACESSO
+			$queryAcesso = "SELECT * FROM acesso_cliente WHERE CLIENTES_ID = '$codCliente'";
+			$resultAcesso = mysql_query($queryAcesso);
+			$nRow = mysql_num_rows($resultAcesso);
+		if($nRow == 0){
+				$cliente = new ClientesVO();				
+				$cliente->ID = $row['ID'];
+				$cliente->CATEGORIAS_ID = $row['CATEGORIAS_ID'];
+				$cliente->EMPRESA_ID = $row['EMPRESA_ID'];
+				$cliente->STATUS_2 = $row['STATUS_2'];
+				$cliente->TIPO_PESSOA = $row['TIPO_PESSOA'];
+				$cliente->DOC_CPF_CNPJ = $row['DOC_CPF_CNPJ'];
+				$cliente->DOC_RG_INSC_ESTADUAL = $row['DOC_RG_INSC_ESTADUAL'];
+				$cliente->TRATAMENTO = $row['TRATAMENTO'];
+				$cliente->NOME_RAZAO = $row['NOME_RAZAO'];
+				$cliente->CONTATO = $row['CONTATO'];
+				$cliente->SEXO = $row['SEXO'];
+				$cliente->DATA_NASCIMENTO = $row['DATA_NASCIMENTO'];
+				$cliente->TELEFONE1 = $row['TELEFONE1'];
+				$cliente->TELEFONE2 = $row['TELEFONE2'];
+				$cliente->CELULAR1 = $row['CELULAR1'];
+				$cliente->CELULAR2 = $row['CELULAR2'];
+				$cliente->DATA_CADASTRO = $row['DATA_CADASTRO'];
+				$cliente->EMAIL = $row['EMAIL'];
+				$cliente->MSN = $row['MSN'];
+				
+				$clientes[] = $cliente;
+			}else
+			{
+				
+			}
+				
+				
+		}
+		
+		
+			return $clientes;
+		
+		
+	}
+	public function cadastrarAcesso(AcessoVO $acesso)
+	{
+		//PEGA VALOR DO CONTRATO DE ADES�O SE HOUVER	
+		$query_adesao = "SELECT * FROM  contratos WHERE  NOME LIKE  '$acesso->CONTRATO'";
+		$result_adesao = mysql_query($query_adesao);
+		$row_adesao = mysql_fetch_assoc($result_adesao);
+		
+		$valor_titulo = $row_adesao['VARLOR_TITULO'];
+			
+			
+			if($valor_titulo != '0,00')
+			{
+				$gerarAdesao = true;
+			}else
+			{
+				$gerarAdesao = false;
+			}
+				
+							
+		$codigoCliente = $acesso->CLIENTES_ID;
+							
+		
+		
+		$primeiroBoleto = SomarData($acesso->VENCIMENTO_CONTRATO, 0, 0, 0);	
+		$vencContrato = SomarData($acesso->VENCIMENTO_CONTRATO, 0, 11, 0);
+				
+		//CADASTRANDO TABELAS DO RADIUS
+			  			  
+		$ipMK = $acesso->ENDERECO_IP;
+
+		$ipMK1 = substr($ipMK , 0, -1);
+		$ipMK2 = substr($ipMK , -1);
+		$ipMK3 = $ipMK2 + 1;
+	
+		$ip2 = $ipMK1.$ipMK3;
+						
+	
+		//CADASTRANDO IP, MAC, LOGIN E SENHA NO RADIUS
+		$queryRadCheck = "INSERT INTO radcheck (id , username, attribute , op, value) 
+						VALUES ('', '$acesso->LOGIN' , 'Password' , '==' , '$acesso->SENHA'),
+						('', '$acesso->LOGIN' , 'Calling-Station-ID' , '==' , '$acesso->ENDERECO_MAC'),
+						('', '$acesso->LOGIN' , 'Framed-IP-Address' , '==' , '$ip2')";
+		$resultRadCheck = mysql_query($queryRadCheck);	
+		
+		//CADASTRANDO PLANO DE ACESSO NO RADIUS
+		$queryRadreply = "INSERT INTO radreply (id , username, attribute , op, value) VALUES 
+						('', '$acesso->LOGIN' , 'Mikrotik-Group' , '==' , '$acesso->PLANO_ACESSO')";
+		$resultRadreply = mysql_query($queryRadreply);
+			   
+	    //CADASTRANDO ACESSO
+	    $queryAcesso = "INSERT INTO acesso_cliente (
+			EMPRESA_ID ,CLIENTES_ID ,LOGIN ,SENHA ,ENDERECO_IP ,ENDERECO_MAC ,PLANO_ACESSO ,
+			BASE ,CONTRATO ,REGIME ,MATERIAL_ACESSO)VALUES (
+			'$acesso->EMPRESA_ID',  '$acesso->CLIENTES_ID',  '$acesso->LOGIN',  '$acesso->SENHA',  
+			'$acesso->ENDERECO_IP',  '$acesso->ENDERECO_MAC',  '$acesso->PLANO_ACESSO',  '$acesso->BASE',  '$acesso->CONTRATO',  
+			'$acesso->REGIME',  '$acesso->MATERIAL_ACESSO')";
+	    $resultAcesso = mysql_query($queryAcesso);
+          
+	
+		//GERAR BOLETOS
+	    			
+			
+		$quantidade = '12';
+	
+   		$_prazo = 0;
+   		$codigoCliente = $acesso->CLIENTES_ID;
+   		
+    		    for($i=0;$i < $quantidade;$i++)
+   				{
+		
+					$sequencia = $i;
+					if($i ==0){
+					$sequencia++;
+					}else if($i == $sequencia){
+					$sequencia++;
+					}
+
+					$sequencia2 = str_pad($sequencia, 2, "0", STR_PAD_LEFT);
+					$ano = date('y');
+
+					$ndocumento = $acesso->CLIENTES_ID.'/'.$ano.'/'.$sequencia2; 
+       
+					
+					$queryUltimoBoleto = "SELECT * FROM contas_receber WHERE CLIENTES_ID = '$codigoCliente' ORDER by ID DESC";
+					$resultUltimoBoleto = mysql_query($queryUltimoBoleto);
+					$rowUltimoBoleto = mysql_fetch_assoc($resultUltimoBoleto);			
+			    	$nRowUltimoBoleto = mysql_num_rows($resultUltimoBoleto);
+			    	if($nRowUltimoBoleto == 0)
+			    	{
+			    		$ultimoNumero = str_pad("1", 6, "0", STR_PAD_LEFT);
+			    	}else
+			    	{
+			    		$ultimoValor = ltrim(substr($rowUltimoBoleto['N_NUMERO'], -6)+1, "0");
+			    		
+			    		$ultimoNumero = str_pad($ultimoValor, 6, "0", STR_PAD_LEFT);
+			    		
+			    	}
+			    	
+           			$NumeroNovo = $codigoCliente.$ultimoNumero;
+           							
+					
+					
+					$_dia = substr($primeiroBoleto, 0, 2);
+   					$_mes = substr($primeiroBoleto, 3, 2);
+   					$_ano  = substr($primeiroBoleto, 6, 4);
+			
+	   				$_ts = mktime(0,0,0,$_mes+$_prazo,$_dia,$_ano);
+       				$_data = date('Y-m-d',$_ts);
+	   					  				
+					$emissao = date('Y-m-d');
+					$controle = $i+1;
+					
+					//Consultar Valor do Plano
+					$sqlPlanoEscolhido = "SELECT * FROM  planos_acesso WHERE NOME LIKE '$acesso->PLANO_ACESSO' ";
+					$resultadoPlano = mysql_query($sqlPlanoEscolhido);
+					$row_planoEscolhido = mysql_fetch_assoc($resultadoPlano);
+				
+					//Valor do Plano Escolhido
+					$valorPlano = $row_planoEscolhido['VALOR'];
+								
+					//$valorPlano = number_format($valorPlano, 2, ",", ".");
+					
+					//Inserindo				
+					$sql = "INSERT INTO contas_receber (N_DOC,CLIENTES_ID,DATA_VENCIMENTO,VALOR_TITULO, STATUS_2, DATA_EMISSAO, N_NUMERO, 
+					CONTROLE, EMPRESA_ID) VALUES
+					('$ndocumento', '$codigoCliente', '$_data','$valorPlano', 'ABERTO', '$emissao','$NumeroNovo', '$ndocumento', '$acesso->EMPRESA_ID')";
+					 
+					$resultadoSql = mysql_query($sql);
+        			
+        								
+        			$_prazo += 1;
+        			
+    			
+    			}
+				
+					//Gera ou N�o Adesao
+    				if($gerarAdesao == true)
+    				{
+    					
+    				$queryUltimoBoleto = "SELECT * FROM contas_receber WHERE CLIENTES_ID = '$codigoCliente' ORDER by ID DESC";
+					$resultUltimoBoleto = mysql_query($queryUltimoBoleto);
+					$rowUltimoBoleto = mysql_fetch_assoc($resultUltimoBoleto);			
+			    	$nRowUltimoBoleto = mysql_num_rows($resultUltimoBoleto);
+			    	if($nRowUltimoBoleto == 0)
+			    	{
+			    		$ultimoNumero = str_pad("1", 6, "0", STR_PAD_LEFT);
+			    	}else
+			    	{
+			    		$ultimoValor = ltrim(substr($rowUltimoBoleto['N_NUMERO'], -6)+1, "0");
+			    		
+			    		$ultimoNumero = str_pad($ultimoValor, 6, "0", STR_PAD_LEFT);
+			    		
+			    	}
+			    	
+           			$NumeroNovo = $codigoCliente.$ultimoNumero;
+           			
+    					
+    					$ndocumento = $acesso->CLIENTES_ID;
+    					$_data = date('Y-m-d');
+    					$valorPlano = $valor_titulo;
+    					
+    					$sql_gerarTituloAdesao = "INSERT INTO contas_receber (N_DOC,CLIENTES_ID,DATA_VENCIMENTO,VALOR_TITULO, STATUS_2, DATA_EMISSAO, N_NUMERO, 
+					CONTROLE, EMPRESA_ID) VALUES
+					('$ndocumento', '$codigoCliente', '$_data','$valorPlano', 'ABERTO', '$emissao','$NumeroNovo', '$ndocumento', '$acesso->EMPRESA_ID')";
+    					
+						$resultadoSql_adesao = mysql_query($sql_gerarTituloAdesao);
+    				}
+				
+				
+				
+		//MIKROTIK
+				
+		$mascara = '/30';
+		$ipCliente = $acesso->ENDERECO_IP.$mascara;
+				
+		$API = new routeros_api();
+
+		$API->debug = true;
+
+		if ($API->connect('192.168.20.1', 'suporte', 'suportedigi123')) 
+		{
+
+		 $API->write('/ip/address/add',false);
+		 $API->write('=address='.$ipCliente,false);
+		 $API->write('=interface=RADIO',false);
+		 $API->write('=comment='.$acesso->NOME_RAZAO);
+
+	 	$ARRAY = $API->read();
+
+   				
+
+ 		$API->disconnect();
+			  	
+		}
+	
+	
+	
+		
+	}
+	public function listarInterfaces($codEmpresa)
+	{
+		$queryServidorPadrao = "SELECT * FROM  servidores WHERE  EMPRESA_ID = '$codEmpresa' AND  DEFAULT_2 = 1";
+		$resultServidorPadrao = mysql_query($queryServidorPadrao);
+		$nRowServidorPadrao = mysql_num_rows($resultServidorPadrao);
+		if($nRowServidorPadrao == 0){return 'ERRO PADRAO';}
+		$rowServidorPadrao = mysql_fetch_assoc($resultServidorPadrao);
+		$codServidor = $rowServidorPadrao['ID'];
+		
+		$queryInterfaces = "SELECT * FROM interface WHERE SERVIDORES_ID = '$codServidor'";
+		$resultInterfaces = mysql_query($queryInterfaces);
+		$nRowInterfaces = mysql_num_rows($resultInterfaces);
+		while ($rowInterfaces = mysql_fetch_assoc($resultInterfaces)) {
+			
+			$interface = new InterfacesVO();
+		
+			$interface->ID = $rowInterfaces['ID'];
+			$interface->SERVIDORES_ID = $rowInterfaces['SERVIDORES_ID'];
+			$interface->NOME = $rowInterfaces['NOME'];
+			
+			$interfaces[] = $interface;	
+		}		
+		
+		return $interfaces;
+			
+	}
+	
+	
+	public function selecionarAcesso($id)
+{
+		$query = "SELECT acesso_cliente.ID,acesso_cliente.EMPRESA_ID, acesso_cliente.CLIENTES_ID, acesso_cliente.LOGIN, acesso_cliente.SENHA, 
+			acesso_cliente.ENDERECO_IP, acesso_cliente.ENDERECO_MAC,  acesso_cliente.DATA_VENC_CONTRATO, acesso_cliente.DATA_CADASTRO, 
+			acesso_cliente.STATUS_2,
+			clientes.NOME_RAZAO,
+			interface.ID as ID_INTERFACE,interface.NOME as NOME_INTERFACE, 
+			planos_acesso.ID as ID_PLANO_ACESSO,planos_acesso.NOME as NOME_PLANO_ACESSO,
+			servidores.ID as ID_SERVIDOR, servidores.NOME_SERVER, 
+			bases.ID as ID_BASE, bases.NOME as NOME_BASE, 
+			material_acesso.ID as ID_MATERIAL,material_acesso.NOME as NOME_MATERIAL , 
+			contratos_acesso.ID as ID_CONTRATO, contratos_acesso.NOME as NOME_CONTRATO
+					FROM acesso_cliente
+			    LEFT JOIN clientes ON clientes.ID = acesso_cliente.CLIENTES_ID
+			    LEFT JOIN interface ON interface.ID = acesso_cliente.INTERFACE_ID 
+			    LEFT JOIN planos_acesso ON planos_acesso.ID = acesso_cliente.PLANOS_ACESSO_ID
+			    LEFT JOIN servidores ON servidores.ID = acesso_cliente.SERVIDORES_ID
+			    LEFT JOIN bases ON bases.ID = acesso_cliente.BASES_ID    
+			    LEFT JOIN material_acesso ON material_acesso.ID = acesso_cliente.MATERIAL_ACESSO_ID
+			    LEFT JOIN contratos_acesso ON contratos_acesso.ID = acesso_cliente.CONTRATOS_ACESSO_ID
+			    WHERE acesso_cliente.ID = '$id'";
+		
+		
+		
+		
+		
+		$result = mysql_query($query);
+		$nrow = mysql_num_rows($result);
+		if($nrow == 0){return 'ERRO';}
+		
+		$row = mysql_fetch_assoc($result);
+			
+			$acessoCliente = new AcessoClienteVO();
+			
+			$dataHoje = date('Y-m-d');
+			$dataAtual = explode('-', $dataHoje);
+			$dataVencimento = explode('-', $row['DATA_VENC_CONTRATO']);
+			
+			$dataAtual = mktime(0,0,0,$dataAtual[1],$dataAtual[2],$dataAtual[0]);
+			$dataBoleto = mktime(0,0,0,$dataVencimento[1],$dataVencimento[2],$dataVencimento[0]);  
+			$d3 = ($dataBoleto-$dataAtual);
+			$dias = round(($d3/60/60/24));
+			
+			
+			$acessoCliente->ID = $row['ID'];
+			$acessoCliente->EMPRESA_ID = $row['EMPRESA_ID'];
+			$acessoCliente->CLIENTES_ID = $row['CLIENTES_ID'];
+			$acessoCliente->LOGIN = $row['LOGIN'];
+			$acessoCliente->SENHA = $row['SENHA'];
+			$acessoCliente->ENDERECO_IP = $row['ENDERECO_IP'];
+			$acessoCliente->ENDERECO_MAC = $row['ENDERECO_MAC'];
+			$acessoCliente->NOME_RAZAO = $row['NOME_RAZAO'];
+			$acessoCliente->ID_INTERFACE = $row['ID_INTERFACE'];
+			$acessoCliente->NOME_INTERFACE = $row['NOME_INTERFACE'];
+			$acessoCliente->ID_PLANO_ACESSO = $row['ID_PLANO_ACESSO'];
+			$acessoCliente->NOME_PLANO_ACESSO = $row['NOME_PLANO_ACESSO'];
+			$acessoCliente->ID_SERVIDOR = $row['ID_SERVIDOR'];
+			$acessoCliente->NOME_SERVER = $row['NOME_SERVER'];
+			$acessoCliente->ID_BASE = $row['ID_BASE'];
+			$acessoCliente->NOME_BASE = $row['NOME_BASE'];
+			$acessoCliente->ID_MATERIAL = $row['ID_MATERIAL'];
+			$acessoCliente->NOME_MATERIAL = $row['NOME_MATERIAL'];
+			$acessoCliente->ID_CONTRATO = $row['ID_CONTRATO'];
+			$acessoCliente->NOME_CONTRATO = $row['NOME_CONTRATO'];
+			$acessoCliente->DATA_VENC_CONTRATO = $row['DATA_VENC_CONTRATO'];
+			$acessoCliente->DATA_CADASTRO = $row['DATA_CADASTRO'];
+			$acessoCliente->DIAS_CONTRATO = $dias;
+			
+			
+			
+		
+		
+		return $acessoCliente;
+	}
+	
+	
+	public function selecionarAcessoCliente($idCliente)
+	{
+		$queryIp = "SELECT * FROM radcheck WHERE attribute LIKE 'Framed-IP-Address' AND cliente LIKE '$idCliente'";
+		$resultIp = mysql_query($queryIp);
+		$rowIp = mysql_fetch_assoc($resultIp);
+		
+		$queryMac = "SELECT * FROM radcheck WHERE attribute LIKE 'Calling-Station-ID' AND cliente LIKE '$idCliente'";
+		$resultMac = mysql_query($queryMac);
+		$rowMac = mysql_fetch_assoc($resultMac);
+		
+		$querySenha = "SELECT * FROM radcheck WHERE attribute LIKE 'Password' AND cliente LIKE '$idCliente'";
+		$resultSenha = mysql_query($querySenha);
+		$rowSenha = mysql_fetch_assoc($resultSenha);
+					
+			$Acesso = new AcessoVO();
+						
+			$Acesso->iPcliente = $rowIp['value'];
+			$Acesso->mCaclient = $rowMac['value'];
+			$Acesso->SenhaCliente = $rowSenha['value'];
+			$Acesso->loginCliente = $rowSenha['username'];
+			
+			
+		return $Acesso;			
+	}
+	public function excluirAcesso($codigoCliente, $login, $enderecoIp)
+	{
+		
+		 	    
+	$radius = "DELETE FROM radcheck WHERE username='$login'";
+	$resultado1 = mysql_query($radius);
+				
+	$plano = "DELETE FROM radreply WHERE username='$login' ";
+	$resultado2 = mysql_query($plano);
+				
+	$historico = "DELETE FROM radacct WHERE username='$login'";
+	$resultado3 = mysql_query($historico);
+				
+	$radcheck2 = "DELETE FROM radcheck2 WHERE loginCliente='$login'";
+	$resultado4 = mysql_query($radcheck2);
+
+				
+	$pessoaAcesso = "UPDATE pessoa SET temAcesso = 'NAO', acesso = '', loginCliente = '',ipCliente = 'p', macCliente = '', nmaquinas = '', tipoContrato = '', vencContrato = '', plano = '', regime = ''  WHERE codigoPessoa = '$codigoCliente'";
+    $resultado5 = mysql_query($pessoaAcesso);
+                
+    //MIKROTIK
+    /////////////
+    $telnet = new PHPTelnet();
+
+	// if the first argument to Connect is blank,
+	// PHPTelnet will connect to the local host via 127.0.0.1
+	$result = $telnet->Connect('192.168.20.1','suporte+ct','suportedigi123');
+
+	if ($result == 0) 
+	{
+		//$interface = $_GET['ip'];
+		$telnet->DoCommand('/ip address remove [/ip address find address="'.$enderecoIp.'/30"]', $result);
+	}
+
+		//////Logs de Acesso
+		///////////////////////////////////////
+		$user_logado = $_SESSION["nome"];
+		$data = date('Y-m-d');
+		$desc = 'Excluiu o Acesso de '.$login;
+		
+		$query_Logs = "INSERT INTO radius.logs (id ,login ,data ,desc)VALUES (NULL , '$user_logado', '$data', '$desc')";
+		$result_logs = mysql_query($query_Logs);
+		////////////////////////////////////////////////////////			 
+	}
+	public function verificarDuplicidadeLogin($loginCliente)
+	{
+		$query = "SELECT * FROM radcheck2 WHERE loginCliente LIKE '$loginCliente'";
+		$result = mysql_query($query);
+		$qtd = mysql_num_rows($result);
+		
+		return $qtd;
+	}
+	public function validarIp($ip)
+	{
+			if (!eregi("^([0-9]){1,3}.([0-9]){1,3}.([0-9]){1,3}.([0-9]){1,3}$", $ip)) {
+				$erro = 'erro';	
+				return $erro;
+				}
+	}
+	public function listarRegistroAcesso($loginCliente)
+	{
+		$query = "SELECT * FROM radacct WHERE username LIKE '$loginCliente' ORDER BY radacctid ASC";
+		$result = mysql_query($query);
+		//$qtd = mysql_num_rows($result);
+		
+		while ($row = mysql_fetch_assoc($result)) {
+    		
+			$Hacesso = new HistoricoAcessoVO();
+							
+			$Hacesso->acctstarttime = $row['acctstarttime'];
+			$Hacesso->acctstoptime = $row['acctstoptime'];
+			$Hacesso->acctsessiontime = $row['acctsessiontime'];
+			$Hacesso->acctinputoctets = $row['acctinputoctets'];
+			$Hacesso->acctoutputoctets = $row['acctoutputoctets'];
+			$Hacesso->acctterminatecause = $row['acctterminatecause'];
+			$Hacesso->framedipaddress = $row['framedipaddress'];
+	
+			
+			$Hacessos[] = $Hacesso;
+		}
+		
+		
+		//////Logs de Acesso
+		///////////////////////////////////////
+		$user_logado = $_SESSION["nome"];
+		$data = date('Y-m-d');
+		$desc = 'Listou os Registros de Acesso'.$loginCliente;
+		
+		$query_Logs = "INSERT INTO radius.logs (id ,login ,data ,desc)VALUES (NULL , '$user_logado', '$data', '$desc')";
+		$result_logs = mysql_query($query_Logs);
+		////////////////////////////////////////////////////////	
+		
+		
+		
+		return $Hacessos;
+	}
+	public function listarConsumoBanda($login)
+	{
+				
+		$query = "SELECT acctstarttime, acctinputoctets,acctoutputoctets, username
+FROM radacct 
+WHERE username = '$login' ";
+		
+		$result = mysql_query($query);
+		
+			while($row = mysql_fetch_assoc($result))
+			{
+				$consumo = new ConsumoBandaVO();
+				
+				$uploadkb = $row['acctinputoctets'] / 1024;
+				$uploadmb = $uploadkb / 1024;
+			
+				
+				$downloadkb = $row['acctoutputoctets'] / 1024;
+				$downloadmb = $downloadkb / 1024;
+				
+				$consumo->upload = substr($uploadmb, 0, 5);
+				$consumo->download = substr($downloadmb, 0, 5);
+				$consumo->mes = $row['acctstarttime'];
+				$consumo->username = $row['username'];
+				
+				$consumos[] = $consumo;
+				
+			}
+			
+			//////Logs de Acesso
+		///////////////////////////////////////
+		$user_logado = $_SESSION["nome"];
+		$data = date('Y-m-d');
+		$desc = 'Listou o Consumo de Banda '.$login;
+		
+		$query_Logs = "INSERT INTO radius.logs (id ,login ,data ,desc)VALUES (NULL , '$user_logado', '$data', '$desc')";
+		$result_logs = mysql_query($query_Logs);
+		////////////////////////////////////////////////////////	
+			
+			
+			return $consumos;
+	}
+	public function editarAcesso($codigoCliente, $nomeCliente, $enderecoIp, $usuario, $senha, $mac, $interface2)
+	{
+		////RADIUS MYSQL ALTERAR
+		//////////////////        
+
+			  			  
+		$ipMK = $enderecoIp;
+
+		$ipMK1 = substr($ipMK , 0, -1);
+		$ipMK2 = substr($ipMK , -1);
+		$ipMK3 = $ipMK2 + 1;
+
+		$ip2 = $ipMK1.$ipMK3;
+
+		//Deletando INfo Antiga do Radius
+		$deletarAcesso = "DELETE FROM radcheck WHERE cliente = '$codigoCliente'";
+		$resultadodeletarAcesso = mysql_query($deletarAcesso);
+						
+		//Inserindo Novas Info no Radius
+		$radius = "INSERT INTO radcheck (id , username, attribute , op, value, cliente, interface, status) VALUES 
+		('', '$usuario' , 'Password' , '==' , '$senha', '$codigoCliente', '$enderecoIp','ATIVO'),
+		('', '$usuario' , 'Calling-Station-ID' , '==' , '$mac', '$codigoCliente','$enderecoIp', 'ATIVO'),
+		('', '$usuario' , 'Framed-IP-Address' , '==' , '$ip2', '$codigoCliente','$enderecoIp', 'ATIVO')";
+		$resultado1 = mysql_query($radius);
+				
+		//Atualizando MAc, Login, Senha			   
+		$radcheck2 = "UPDATE radcheck2 SET mCaclient = '$mac',loginCliente = '$usuario',SenhaCliente = '$senha' WHERE  iDcliente='$codigoCliente'";
+		$resultado4 = mysql_query($radcheck2);
+  		
+		//Atualizando Cadastro Principal
+        $pessoaAcesso = "UPDATE pessoa SET temAcesso = 'SIM', acesso = '$interface2', loginCliente = '$usuario',ipCliente = '$enderecoIp', macCliente = '$mac'  WHERE codigoPessoa = '$codigoCliente'";
+        $resultado5 = mysql_query($pessoaAcesso);
+                
+                
+                
+     
+                
+                
+        //MIKROTIK APAGAR
+        /////////////
+        $telnet = new PHPTelnet();
+
+				// if the first argument to Connect is blank,
+				// PHPTelnet will connect to the local host via 127.0.0.1
+				$result = $telnet->Connect('192.168.20.1','suporte+ct','suportedigi123');
+				$inet = $interface2;
+				
+				if ($result == 0) {
+				
+				$telnet->DoCommand('/ip address remove [/ip address find address="'.$enderecoIp.'/30"]', $result);
+				$telnet->DoCommand('/ip address add address="'.$enderecoIp.'/30" interface="'.$inet.'" comment="'.$nomeCliente.'"', $result);
+				}
+				
+				
+				//////Logs de Acesso
+		///////////////////////////////////////
+		$user_logado = $_SESSION["nome"];
+		$data = date('Y-m-d');
+		$desc = 'Editou o Acesso '.$login;
+		
+		$query_Logs = "INSERT INTO radius.logs (id ,login ,data ,desc)VALUES (NULL , '$user_logado', '$data', '$desc')";
+		$result_logs = mysql_query($query_Logs);
+		////////////////////////////////////////////////////////	
+				 
+	}
+	public function testeRenovarContrato()
+	{
+		$query = "select * from radcheck where acctstarttime dateFunction >= '2011-04' ";
+		$result = mysql_query($query);
+		$row = mysql_fetch_assoc($result);
+		
+	}
+	public function renovarContrato($nome, $plano, $maquinas, $regime, $contrato, $primeiroBoleto)
+	{
+
+		//Pegar Valor do Titulo de Acordo com o Contrato
+		
+		
+		$query_adesao = "SELECT * FROM contratos WHERE nomeContrato LIKE '$contrato'";
+		$result_adesao = mysql_query($query_adesao);
+		$row_adesao = mysql_fetch_assoc($result_adesao);
+		
+		$valor_titulo = $row_adesao['valorTitulo'];
+		
+			
+			if($valor_titulo == '')
+			{
+				$valor_titulo == '0,00';
+			}
+			
+			if($valor_titulo != '0,00')
+			{
+				$gerarAdesao = true;
+			}else
+			{
+				$gerarAdesao = false;
+			}
+		
+					    
+    //Nome do Cliente
+	$cliente = $nome;
+				
+			
+	
+              
+	
+	//$dadosboleto["convenio"] = "1248695"; 
+	$dadosboleto["convenio"] = "2091258"; 
+	$dadosboleto["formatacao_convenio"] = "7";
+	$dadosboleto["formatacao_nosso_numero"] = "2";
+
+	$dadosboleto["carteira"] = "18";
+	$dadosboleto["agencia"] = "0721-8";
+	$dadosboleto["conta"] = "18751-8";
+				
+	
+				
+	//Pegar C�digo do Cliente
+	$query_codigo = "SELECT pessoa.codigoPessoa, pessoa.loginCliente FROM pessoa WHERE textoNome = '$cliente'";
+	$result_codigo = mysql_query($query_codigo);
+	$row_codigo = mysql_fetch_assoc($result_codigo);
+				
+		$codigoCliente = $row_codigo['codigoPessoa'];
+			
+	$quantidade = '12';
+	
+   	$_prazo = 0;
+   
+    		    for($i=0;$i < $quantidade;$i++)
+   				{
+		
+					$sequencia = $i;
+					if($i ==0){
+					$sequencia++;
+					}else if($i == $sequencia){
+					$sequencia++;
+					}
+
+					$sequencia2 = str_pad($sequencia, 2, "0", STR_PAD_LEFT);
+					$ano = date('y');
+
+					$ndocumento = $codigoCliente.'/'.$ano.'/'.$sequencia2; 
+       
+							
+			    	$queryUltimoBoleto = "SELECT * FROM radius.contasapagar WHERE cliente = '$codigoCliente' ORDER by id DESC";
+					$resultUltimoBoleto = mysql_query($queryUltimoBoleto);
+					$rowUltimoBoleto = mysql_fetch_assoc($resultUltimoBoleto);			
+			    	$nRowUltimoBoleto = mysql_num_rows($resultUltimoBoleto);
+			    	if($nRowUltimoBoleto == 0)
+			    	{
+			    		$ultimoNumero = str_pad("1", 6, "0", STR_PAD_LEFT);
+			    	}else
+			    	{
+			    		$ultimoValor = ltrim(substr($rowUltimoBoleto['nNumero'], -6)+1, "0");
+			    		
+			    		$ultimoNumero = str_pad($ultimoValor, 6, "0", STR_PAD_LEFT);
+			    		
+			    	}
+			    	
+           			$NumeroNovo = $codigoCliente.$ultimoNumero;
+           			
+					
+					
+					//$dataPrimeiroBoleto = "10/01/2011";
+					$_dia = substr($primeiroBoleto, 0, 2);
+   					$_mes = substr($primeiroBoleto, 3, 2);
+   					$_ano  = substr($primeiroBoleto, 6, 4);
+			
+	   				$_ts = mktime(0,0,0,$_mes+$_prazo,$_dia,$_ano);
+       				$_data = date('Y-m-d',$_ts);
+	   				
+	  				
+					$emissao = date('Y-m-d');
+					$controle = $i+1;
+					
+					//Consultar Valor do Plano
+					$sqlPlanoEscolhido = "SELECT * FROM planos WHERE nome = '$plano'";
+					$resultadoPlano = mysql_query($sqlPlanoEscolhido);
+					$row_planoEscolhido = mysql_fetch_assoc($resultadoPlano);
+				
+					//Valor do Plano Escolhido
+					$valorPlano = $row_planoEscolhido['valor'];
+								
+					
+					
+					//Inserindo
+					$sql = "INSERT INTO contasapagar (id,ndocumento,cliente,vencimento,valor, status, emissao, nNumero, controle) VALUES
+					('','$ndocumento', '$codigoCliente', '$_data','$valorPlano', 'ABERTO', '$emissao','$NumeroNovo', '$controle')";
+					 
+					$resultadoSql = mysql_query($sql);
+        			
+        			//supondo que o vencimento � de 30 em 30 dias 
+					
+        			$_prazo += 1;
+        			
+    			
+    			}
+			
+    			
+    			//Gera ou N�o Adesao
+    				if($gerarAdesao == true)
+    				{
+    					$queryUltimoBoleto = "SELECT * FROM radius.contasapagar WHERE cliente = '$codigoCliente' ORDER by id DESC";
+					$resultUltimoBoleto = mysql_query($queryUltimoBoleto);
+					$rowUltimoBoleto = mysql_fetch_assoc($resultUltimoBoleto);			
+			    	$nRowUltimoBoleto = mysql_num_rows($resultUltimoBoleto);
+			    	if($nRowUltimoBoleto == 0)
+			    	{
+			    		$ultimoNumero = str_pad("1", 6, "0", STR_PAD_LEFT);
+			    	}else
+			    	{
+			    		$ultimoValor = ltrim(substr($rowUltimoBoleto['nNumero'], -6)+1, "0");
+			    		
+			    		$ultimoNumero = str_pad($ultimoValor, 6, "0", STR_PAD_LEFT);
+			    		
+			    	}
+			    	
+           			$NumeroNovo = $codigoCliente.$ultimoNumero;
+    					
+    					$ndocumento = $row_codigo['codigoPessoa'];
+    					$_data = date('Y-m-d');
+    					$valorPlano = $valor_titulo;
+    					
+    					$sql_gerarTituloAdesao = "INSERT INTO contasapagar (id,ndocumento,cliente,vencimento,valor, status, emissao, nNumero, controle) VALUES
+						('','$ndocumento', '$codigoCliente', '$_data','$valorPlano', 'ABERTO', '$_data','$NumeroNovo', 'ADESAO')";
+					 
+						$resultadoSql_adesao = mysql_query($sql_gerarTituloAdesao);
+    				}
+    			
+    			//Atualizar Plano, Tabelas radreply, pessoa
+				
+		$query_codigo = "SELECT * FROM pessoa WHERE textoNome LIKE '$nome'";
+		$result_codigo = mysql_query($query_codigo);
+		$row_codigo = mysql_fetch_assoc($result_codigo);
+		
+		$codigoCliente = $row_codigo['codigoPessoa'];
+		$ano = date('y');
+		$ndocumento = $codigoCliente.'/'.$ano.'/12';
+		
+		
+		$query = "SELECT * FROM contasapagar WHERE cliente LIKE '$codigoCliente' AND ndocumento = '$ndocumento' ORDER BY id DESC LIMIT 0 , 1";
+		$result = mysql_query($query);
+		$row = mysql_fetch_assoc($result);
+		$qtd = mysql_num_rows($result);
+		
+		if($qtd > 0)
+		{		
+			$ultimaData = $row['vencimento'];
+		
+						
+		}else
+		{
+			$ultimaData = $row_codigo['vencContrato'];	
+		}
+    	
+    				
+    				
+    			//PESSOA
+    			$query_pessoa = "UPDATE radius.pessoa SET regime = '$regime',nmaquinas = '$maquinas',tipoContrato = '$contrato', plano = '$plano', planoCliente = '$plano', vencContrato = '$ultimaData' WHERE pessoa.codigoPessoa = '$codigoCliente'";
+				$result_pessoa = mysql_query($query_pessoa);   
+				
+			
+
+				$login = $row_codigo['loginCliente'];
+				
+				$query_plano = "UPDATE radreply SET value = '$plano' WHERE username = '$login'";
+				$result_plano = mysql_query($query_plano);   
+
+	
+	}
+	public function mikrotik()
+	{
+
+		ini_set('max_execution_time','20000');
+		
+		$query = "SELECT radcheck2. * , radreply.value, pessoa.codigoPessoa, pessoa.textoNome, 
+		pessoa.acesso FROM radreply INNER JOIN (pessoa INNER JOIN radcheck2 ON radcheck2.iDcliente = pessoa.codigoPessoa) 
+		ON radcheck2.loginCliente = radreply.username ORDER by id DESC ";
+		$result = mysql_query($query);
+		
+		
+					
+				
+		
+				while ($row = mysql_fetch_assoc($result))
+				{
+					
+					$API = new routeros_api();
+				
+					$API->debug = true;
+					if ($API->connect('192.168.20.1', 'marconi', '123')) {
+					
+					 echo $ipCliente = $row['iPcliente'].'/30';
+					 $interface = $row['acesso'];
+					 $nomeCliente = $row['textoNome'];
+					
+					 $API->write('/ip/address/add',false);
+					 $API->write('=address='.$ipCliente,false);
+					 $API->write('=interface='.$interface,false);
+					 $API->write('=comment='.$nomeCliente);
+			
+					  $ARRAY = $API->read();
+					 
+					$API->disconnect();
+							  	
+					}
+					
+					
+				}
+		
+					
+				
+		
+	}
+
+	
+	//------------INTERFACES DO SERVIDOR--------------//
+	public function listarServidores($empresa)
+	{
+		$query = "SELECT * FROM servidores WHERE EMPRESA_ID = '$empresa'";
+		$result = mysql_query($query);
+		$nRow = mysql_num_rows($result);
+		if($nRow == 0){return 'ERRO';}
+		
+		while ($row = mysql_fetch_assoc($result))
+		{
+			$servidor = new ServidoresVO();
+			$servidor->ID = $row['ID'];
+			$servidor->EMPRESA_ID = $row['EMPRESA_ID'];
+			$servidor->NOME_SERVER = $row['NOME_SERVER'];
+			$servidor->ENDERECO_IP = $row['ENDERECO_IP'];
+			$servidor->USUARIO = $row['USUARIO'];
+			$servidor->SENHA = $row['SENHA'];
+			$servidor->PORTA_API = $row['PORTA_API'];
+			$servidor->DEFAULT_2 = $row['DEFAULT_2'];
+			
+			$servidors[] = $servidor;
+		}
+		
+		return $servidors;
+	}
+	public function cadastrarServidor(ServidoresVO $servidor)
+	{
+		//VERIFICA SE EXISTE UM SERVIDOR PADRAO
+		$queryVerificaServerPadrao = "SELECT * FROM servidores WHERE DEFAULT_2 = 1 AND EMPRESA_ID='$servidor->EMPRESA_ID'";
+		$resultverificaServerPadrao = mysql_query($queryVerificaServerPadrao);
+		$nrowVerificaServerPadrao = mysql_num_rows($resultverificaServerPadrao);
+		
+		if($nrowVerificaServerPadrao == 0)
+		{
+			if($servidor->DEFAULT_2 == 1)
+			{
+				$padrao = 1;	
+			}else{
+				$padrao = 0;
+			}
+			
+		}else {
+			$padrao = 0;
+			
+		}
+		
+		$query = "INSERT INTO servidores (ID, EMPRESA_ID, NOME_SERVER, ENDERECO_IP, USUARIO, SENHA, PORTA_API, DEFAULT_2) VALUES 
+		(NULL, '$servidor->EMPRESA_ID', '$servidor->NOME_SERVER', '$servidor->ENDERECO_IP', '$servidor->USUARIO', '$servidor->SENHA', 
+		'$servidor->PORTA_API', '$padrao')";
+		
+		$result = mysql_query($query);
+		
+	}
+	public function listarInterfacesServidor($ip, $porta, $usuario, $senha)
+	{
+					$API = new routeros_api();
+					$API->port = $porta;
+				
+					$API->debug = true;
+					if ($API->connect($ip, $usuario, $senha)) {
+					
+					
+					 $API->write('/interface/print',true);
+					// $API->write('?type=wlan');
+					 
+			
+					  $ARRAY = $API->read();
+					  
+					  return $ARRAY;
+					 
+					  $API->disconnect();
+							  	
+					}else{
+					   return 'ERRO';
+					}
+	}
+	public function cadastrarInterface(InterfacesVO $interface)
+	{
+			//CONSULTAR DADOS DO SERVIDOR
+			$query = "SELECT * FROM servidores WHERE ID = $interface->SERVIDORES_ID";
+			$result = mysql_query($query);
+			$nRow = mysql_num_rows($result);
+			if($nRow == 0){return 'ERRO';}
+			$row = mysql_fetch_assoc($result);
+			
+			$porta = $row['PORTA_API'];
+			$ip = $row['ENDERECO_IP'];
+			$usuario = $row['USUARIO'];
+			$senha = $row['SENHA'];
+			
+			//PREPARA A INTERFACE NO SERVIDOR
+			//
+			//--1-MUDAR NOME INSERIR COMENTARIO
+		
+					//TENTA CONECTAR-SE AO SERVIDOR REMOTAMENTE VIA API
+					$API = new routeros_api();
+					$API->port = $porta;
+				
+					$API->debug = true;
+					if ($API->connect($ip, $usuario, $senha)) 
+					{
+						 //RENOMEIA INTERFACE DO CLIENTE;
+						 $API->write('/interface/set',false);
+						 $API->write('=name=' . $interface->NOME,false);
+						 $API->write('=comment=' . $interface->DESCRICAO,false);
+						 $API->write('=numbers=' . $interface->NAME_INTERFACE_REMOTA,false);
+						 $API->write('=disabled=' . 'no');
+						 $API->read();
+						 
+						 //CRIA SERVIDOR HOTSPOT CASO HOUVER;						 
+						 
+						 if($interface->HOSTPOT == '1')
+						 {
+						 	//CRIA EXECESSOES ANTES DE CRIAR O SERVER(WINBOX, API);
+						 	//--WINBOX
+							 $API->write('/ip/hotspot/walled-garden/ip/add',false);
+							 //$API->write('=server=ServerOpus',false);
+							 $API->write('=action=accept',false);
+							 $API->write('=dst-address=' . $ip,false);
+							 $API->write('=protocol=tcp',false);
+							 $API->write('=dst-port=8291');
+							 $API->read();
+							 	//--API
+							 $API->write('/ip/hotspot/walled-garden/ip/add',false);
+		     				 //$API->write('=server=ServerOpus',false);
+							 $API->write('=action=accept',false);
+							 $API->write('=dst-address=' . $ip,false);
+							 $API->write('=protocol=tcp',false);
+							 $API->write('=dst-port=8728');
+							 $API->read();
+						 
+							 //CRIA SERVIDOR HOTSPOT
+							 $API->write('/ip/hotspot/add',false);
+							 $API->write('=name=' .'sv'.$interface->NOME,false);
+							 $API->write('=interface=' . $interface->NOME,false);
+							 $API->write('=idle-timeout=00:01:00',false);
+							 $API->write('=keepalive-timeout=00:00:30',false);						 
+							 $API->write('=disabled=no');						 						 
+							 $API->read();
+						 }
+						 
+						if($interface->HOTSPOT_RADIUS == '1')
+						 {
+						 	//CRIA EXECESSOES ANTES DE CRIAR O SERVER(WINBOX, API);
+						 	//--WINBOX
+							 $API->write('/ip/hotspot/walled-garden/ip/add',false);
+							 //$API->write('=server=ServerOpus',false);
+							 $API->write('=action=accept',false);
+							 $API->write('=dst-address=' . $ip,false);
+							 $API->write('=protocol=tcp',false);
+							 $API->write('=dst-port=8291');
+							 $API->read();
+							 	//--API
+							 $API->write('/ip/hotspot/walled-garden/ip/add',false);
+		     				 //$API->write('=server=ServerOpus',false);
+							 $API->write('=action=accept',false);
+							 $API->write('=dst-address=' . $ip,false);
+							 $API->write('=protocol=tcp',false);
+							 $API->write('=dst-port=8728');
+							 $API->read();
+							 
+							 //CRIA SERVIDOR HOTSPOT
+							 $API->write('/ip/hotspot/add',false);
+							 $API->write('=name=' .'sv'.$interface->NOME,false);
+							 $API->write('=interface=' . $interface->NOME,false);
+							 $API->write('=idle-timeout=00:01:00',false);
+							 $API->write('=keepalive-timeout=00:00:30',false);						 
+							 $API->write('=disabled=no');						 						 
+							 $API->read();
+						 }
+						 
+						 //CADASTRAR INTERFACE NO BANCO DE DADOS
+						 $queryCadastrarInterface = "INSERT INTO 
+						 interface (SERVIDORES_ID, SERVIDOR_RADIUS_ID, NOME, DESCRICAO, HOSTPOT, PPOE, SIMPLES_QUEUE, HOTSPOT_RADIUS) 
+						 VALUES ('$interface->SERVIDORES_ID', '$interface->SERVIDOR_RADIUS_ID', '$interface->NOME', '$interface->DESCRICAO', 
+						 '$interface->HOSTPOT', '$interface->PPOE','$interface->SIMPLES_QUEUE', '$interface->HOTSPOT_RADIUS')";
+						 
+						 $resultCadastrarInterface = mysql_query($queryCadastrarInterface);
+						 
+						 
+							////CRIA SERVER PROFILE HOSTSPOT
+							//$API->write('/ip/hotspot/profile/add',false);
+							//$API->write('=name=' . $interface->NOME,false);
+							//$API->write('=hotspot-address=' . $ipServerHotspot,false);
+							//$API->write('=dns-name=OpusServer');						 
+							//$API->read();	
+							  	
+					}else{
+					   return 'ERRO';
+					}
+			
+			
+		
+		
+		
+	}
+	public function listarInterfacesServidorRemote($idServidor)
+	{
+		
+			//CONSULTA SERVIDOR PELO ID
+			$query = "SELECT * FROM servidores WHERE ID = $idServidor";
+			$result = mysql_query($query);
+			$nRow = mysql_num_rows($result);
+			if($nRow == 0){return 'ERRO';}
+			$row = mysql_fetch_assoc($result);
+			
+			$porta = $row['PORTA_API'];
+			$ip = $row['ENDERECO_IP'];
+			$usuario = $row['USUARIO'];
+			$senha = $row['SENHA'];
+			 
+   		
+					//TENTA CONECTAR-SE AO SERVIDOR REMOTAMENTE VIA API
+					$API = new routeros_api();
+					$API->port = $porta;
+				
+					$API->debug = true;
+					if ($API->connect($ip, $usuario, $senha)) 
+					{
+						//RETORNA LISTA DE INTERFACES DO SERVIDOR			
+					 	$API->write('/interface/print',true);
+					 	$ARRAY = $API->read();
+					  
+					  	return $ARRAY;
+					 
+					  	$API->disconnect();
+							  	
+					}else{
+					   return 'ERRO';
+					}
+	}
+	
+	//------------SERVIDORES RADIUS-----------------------//
+	public function cadastrarServRadius(ServidoresRadiusVO $servRadius)
+	{
+		
+			//CONSULTAR DADOS DO SERVIDOR
+			$query = "SELECT * FROM servidores WHERE ID = $servRadius->SERVIDORES_ID";
+			$result = mysql_query($query);
+			$nRow = mysql_num_rows($result);
+			if($nRow == 0){return 'ERRO';}
+			$row = mysql_fetch_assoc($result);
+			
+			$porta = $row['PORTA_API'];
+			$ip = $row['ENDERECO_IP'];
+			$usuario = $row['USUARIO'];
+			$senha = $row['SENHA'];
+			
+					//TENTA CONECTAR-SE AO SERVIDOR REMOTAMENTE VIA API
+					$API = new routeros_api();
+					$API->port = $porta;
+				
+					$API->debug = true;
+					if ($API->connect($ip, $usuario, $senha)) 
+					{
+						 //ADICIONAR SERVIDOR RADIUS NO SERVIDOR MIKROTIK
+						 $API->write('/radius/add',false);
+						 $API->write('=service=hotspot',false);
+						 $API->write('=address=' . $servRadius->IP_FREERADIUS,false);
+						 $API->write('=secret=' . $servRadius->SECRET,false);
+						 $API->write('=authentication-port=' . $servRadius->AUTHENTICATION_PORT,false);
+						 $API->write('=accounting-port=' .  $servRadius->ACCOUNTING_PORT);						 
+						 $arr = $API->read();					 
+						 
+						
+				$query = "INSERT INTO db_opus.servidores_radius (SERVIDORES_ID, NOME, IP_FREERADIUS, SECRET, AUTHENTICATION_PORT, ACCOUNTING_PORT, 
+				TIMEOUT, USERNAME_MYSQL, PASSWORD_MYSQL, BANCO_DADOS) VALUES 
+				('$servRadius->SERVIDORES_ID', '$servRadius->NOME', '$servRadius->IP_FREERADIUS', '$servRadius->SECRET', '$servRadius->AUTHENTICATION_PORT', 
+				'$servRadius->ACCOUNTING_PORT', '300', '$servRadius->USERNAME_MYSQL', '$servRadius->PASSWORD_MYSQL', '$servRadius->BANCO_DADOS')";
+					
+				$result = mysql_query($query);
+						 
+						   $API->disconnect();
+				
+							return $arr;	
+							  	
+					}else{
+					   return 'ERRO';
+					}
+			
+			
+		
+		
+	}
+	public function editarServRadius(ServidoresRadiusVO $servRadius)
+	{
+			//CONSULTAR DADOS DO SERVIDOR
+			$query = "SELECT * FROM servidores WHERE ID = $servRadius->SERVIDORES_ID";
+			$result = mysql_query($query);
+			$nRow = mysql_num_rows($result);
+			if($nRow == 0){return 'ERRO';}
+			$row = mysql_fetch_assoc($result);
+			
+			$porta = $row['PORTA_API'];
+			$ip = $row['ENDERECO_IP'];
+			$usuario = $row['USUARIO'];
+			$senha = $row['SENHA'];
+			
+			
+			
+			
+					//TENTA CONECTAR-SE AO SERVIDOR REMOTAMENTE VIA API
+					$API = new routeros_api();
+					$API->port = $porta;
+				
+					$API->debug = true;
+					if ($API->connect($ip, $usuario, $senha)) 
+					{
+						
+						 //LOCATIZA SERVER RADIUS NO MIKROTIK
+						  $API->write('/radius/print',false);
+						  $API->write('?address=' . $servRadius->IP_ANTIGO);
+						  $userArray = $API->read();
+						  $userID = $userArray[0]['.id'];						  
+						   
+						
+						 //ALTERA SERVIDOR RADIUS NO SERVIDOR MIKROTIK
+						 $API->write('/radius/set',false);
+						 $API->write('=address=' . $servRadius->IP_FREERADIUS,false);
+						 $API->write('=secret=' . $servRadius->SECRET,false);
+						 $API->write('=authentication-port=' . $servRadius->AUTHENTICATION_PORT,false);
+						 $API->write('=accounting-port=' .  $servRadius->ACCOUNTING_PORT, false);
+						 $API->write('=numbers=' .  $userID);						 
+						 $API->read();		
+
+					
+						 
+						 
+						
+				$queryInsert = "UPDATE servidores_radius SET NOME='$servRadius->NOME', IP_FREERADIUS='$servRadius->IP_FREERADIUS', SECRET='$servRadius->SECRET', AUTHENTICATION_PORT='$servRadius->AUTHENTICATION_PORT', 
+				ACCOUNTING_PORT='$servRadius->ACCOUNTING_PORT', TIMEOUT='$servRadius->TIMEOUT', USERNAME_MYSQL='$servRadius->USERNAME_MYSQL', 
+				PASSWORD_MYSQL='$servRadius->PASSWORD_MYSQL', BANCO_DADOS='$servRadius->BANCO_DADOS' WHERE ID='$servRadius->ID'";
+					
+				$resultInsert = mysql_query($queryInsert)or die(mysql_error());
+						 
+							
+							  	
+					}else{
+					   return 'ERRO';
+					}
+			
+	}
+	public function selecionarServRadius($codServRadius)
+	{
+		$query = "SELECT servidores_radius. *, servidores.NOME_SERVER from servidores_radius
+		LEFT JOIN servidores ON servidores.ID = servidores_radius.SERVIDORES_ID
+		WHERE servidores_radius.ID = $codServRadius";
+		
+		$result = mysql_query($query);
+		$nRow = mysql_num_rows($result);
+		if($nRow == 0){return 'ERRO';}
+		
+		$row = mysql_fetch_assoc($result);
+		
+			$servRadius = new ServidoresRadiusVO();
+			
+			$servRadius->ID = $row['ID'];
+			$servRadius->SERVIDORES_ID = $row['SERVIDORES_ID']; 
+			$servRadius->NOME_SERVIDOR = $row['NOME_SERVER'];
+			$servRadius->NOME = $row['NOME'];
+			$servRadius->IP_FREERADIUS = $row['IP_FREERADIUS'];
+			$servRadius->SECRET = $row['SECRET'];
+			$servRadius->AUTHENTICATION_PORT = $row['AUTHENTICATION_PORT'];
+			$servRadius->ACCOUNTING_PORT = $row['ACCOUNTING_PORT'];
+			$servRadius->TIMEOUT = $row['TIMEOUT'];
+			$servRadius->USERNAME_MYSQL = $row['USERNAME_MYSQL'];
+			$servRadius->PASSWORD_MYSQL = $row['PASSWORD_MYSQL'];
+			$servRadius->BANCO_DADOS = $row['BANCO_DADOS'];
+			
+				
+		
+		
+			return $servRadius;
+	}
+	//------------SICRONIZA��O SERVER-------------------//
+	public function configurarServer($interfaceSelect, InterfacesVO $interface, $planosAcesso, $faixaClientes, 
+										$definirManualmente,$usarDHCP,$ip,$usuario,$senha,$porta)
+	{
+ 			
+		
+						//VARIAVEIS ESTANCIADAS API
+						$API = new routeros_api();
+						$API->port = $porta;					
+						$API->debug = true;
+		
+		
+						
+						
+						if ($API->connect($ip, $usuario, $senha)) {					
+						
+						 //RENOMEIA INTERFACE DO CLIENTE;
+						 $API->write('/interface/set',false);
+						 $API->write('=name=' . $interface->NOME,false);
+						 $API->write('=comment=' . $interface->DESCRICAO,false);
+						 $API->write('=numbers=' . $interfaceSelect);
+						 $API->read();
+						 
+						 //ADICIONAR IP INTERFACE CLIENTES;
+						 $API->write('/ip/address/add',false);
+						 $API->write('=address=' . $faixaClientes,false);
+						 $API->write('=interface=' .  $interface->NOME);
+						 $API->read();
+						 
+						 //CADASTRA INTERFACE NO BANCO DE DADOS;
+							$queryInterface = "INSERT INTO interface (SERVIDORES_ID, NOME, DESCRICAO, HOSTPOT, PPOE, SIMPLES_QUEUE, 
+							HOTSPOT_RADIUS) VALUES ( '$interface->SERVIDORES_ID', '$interface->NOME', '$interface->DESCRICAO', '$interface->HOSTPOT', 
+							'$interface->PPOE', '$interface->SIMPLES_QUEUE', '$interface->HOTSPOT_RADIUS')";							
+							$resultInterface = mysql_query($queryInterface);
+						 
+							//CASO S� UTILIZE HOTSPOT
+					if($interface->HOSTPOT == 1){
+							
+							//CRIA EXECESSOES ANTES DE CRIAR O SERVER(WINBOX, API);
+						 	//--WINBOX
+						 $API->write('/ip/hotspot/walled-garden/ip/add',false);
+						 //$API->write('=server=ServerOpus',false);
+						 $API->write('=action=accept',false);
+						 $API->write('=dst-address=' . $ip,false);
+						 $API->write('=protocol=tcp',false);
+						 $API->write('=dst-port=8291');
+						 $API->read();
+						 	//--API
+						 $API->write('/ip/hotspot/walled-garden/ip/add',false);
+	     				 //$API->write('=server=ServerOpus',false);
+						 $API->write('=action=accept',false);
+						 $API->write('=dst-address=' . $ip,false);
+						 $API->write('=protocol=tcp',false);
+						 $API->write('=dst-port=8728');
+						 $API->read();	
+						 
+						 //PEGANDO IP DO SERVER
+						 $arrayIp = explode('/', $faixaClientes);
+						 $ipServerHotspot = $arrayIp[0];					 						   
+						 
+						 //CRIA SERVER PROFILE HOSTSPOT
+						 $API->write('/ip/hotspot/profile/add',false);
+						 $API->write('=name=' . $interface->NOME,false);
+						 $API->write('=hotspot-address=' . $ipServerHotspot,false);
+						 $API->write('=dns-name=OpusServer');						 
+						 $API->read();		
+
+						 //CRIA SERVIDOR HOTSPOT
+						 $API->write('/ip/hotspot/add',false);
+						 $API->write('=name=' .'sv'.$interface->NOME,false);
+						 $API->write('=interface=' . $interface->NOME,false);
+						 $API->write('=idle-timeout=00:01:00',false);
+						 $API->write('=keepalive-timeout=00:00:30',false);						 
+						 $API->write('=disabled=no');						 						 
+						 $API->read();
+						 
+						 //PEGA O ID DA ULTIMA INTERFACE CADASTRADA
+							 $queryUltimaInterface = "SELECT * FROM interface ORDER by ID DESC LIMIT 0, 1";
+							 $resultUltimaInterface = mysql_query($queryUltimaInterface);
+							 $rowUltimaInterface = mysql_fetch_assoc($resultUltimaInterface);
+							 $codUltimaInterface = $rowUltimaInterface['ID'];
+						 
+						 
+						 //CRIAR USERS PROFILES HOTSPOT
+						 $registroPlano = count($planosAcesso);
+						 for($i=0;$i<$registroPlano;$i++)
+						 {
+						 	 $API->write('/ip/hotspot/user/profile/add',false);
+							 $API->write('=name=' . $planosAcesso[$i]->nome,false);
+							 $API->write('=idle-timeout=04:00:00',false);
+							 $API->write('=keepalive-timeout=00:01:00',false);
+							 $API->write('=rate-limit=' . $planosAcesso[$i]->upload.'/'.$planosAcesso[$i]->download,false);						 
+							 $API->write('=status-autorefresh=00:03:00',false);
+							 $API->write('transparent-proxy=no');						 						 
+							 $API->read();		
+
+							 $nomePlano = $planosAcesso[$i]->nome;
+							 $download = $planosAcesso[$i]->download;
+							 $upload = $planosAcesso[$i]->upload;
+							 
+							 //CADASTRAR PLANOS NO BANDO MYSQL
+							 $queryInterface = "INSERT INTO planos_acesso (INTERFACE_ID, NOME, DOWNLOAD, UPLOAD) VALUES 
+							 ('$codUltimaInterface', '$nomePlano', '$download', '$upload')";							
+							 $resultInterface = mysql_query($queryInterface);							 
+						 }						
+					}
+					
+						//CASO UTILIZE HOTSPOT + FREERADIUS EXTERNO
+					if($interface->HOTSPOT_RADIUS == 1){
+						
+						
+						//CRIA EXECESSOES ANTES DE CRIAR O SERVER(WINBOX, API);
+						 	//--WINBOX
+						 $API->write('/ip/hotspot/walled-garden/ip/add',false);
+						 //$API->write('=server=ServerOpus',false);
+						 $API->write('=action=accept',false);
+						 $API->write('=dst-address=' . $ip,false);
+						 $API->write('=protocol=tcp',false);
+						 $API->write('=dst-port=8291');
+						 $API->read();
+						 	//--API
+						 $API->write('/ip/hotspot/walled-garden/ip/add',false);
+	     				 //$API->write('=server=ServerOpus',false);
+						 $API->write('=action=accept',false);
+						 $API->write('=dst-address=' . $ip,false);
+						 $API->write('=protocol=tcp',false);
+						 $API->write('=dst-port=8728');
+						 $API->read();	
+
+						 //VERIFICA SE EXISTE ALGUM SERVIDOR RADIUS CADASTRADO PARA O SERVIDOR MIKROTIK ATUAL
+						 $queryServerRadius = "SELECT * FROM servidores_radius WHERE SERVIDORES_ID = '$interface->SERVIDORES_ID'";
+						 $resultServerRadius = mysql_query($queryServerRadius);
+						 $nRowServerRadius = mysql_num_rows($resultServerRadius);
+						 if($nRowServerRadius > 0)
+						 {
+						 	$rowServerRadius = mysql_fetch_assoc($resultServerRadius);
+						 	
+						 	$servidorRadius = new ServidorRadiusVO();
+						 	$servidorRadius->ID = $rowServerRadius['ID'];
+							$servidorRadius->SERVIDORES_ID = $rowServerRadius['SERVIDORES_ID']; 
+							$servidorRadius->IP_FREERADIUS = $rowServerRadius['IP_FREERADIUS'];
+							$servidorRadius->SECRET = $rowServerRadius['SECRET'];
+							$servidorRadius->AUTHENTICATION_PORT = $rowServerRadius['AUTHENTICATION_PORT'];
+							$servidorRadius->ACCOUNTING_PORT = $rowServerRadius['ACCOUNTING_PORT'];
+							$servidorRadius->TIMEOUT = $rowServerRadius['TIMEOUT'];
+							$servidorRadius->USERNAME_MYSQL = $rowServerRadius['USERNAME_MYSQL'];
+							$servidorRadius->PASSWORD_MYSQL = $rowServerRadius['PASSWORD_MYSQL'];
+							
+							//CONFIGURA O SERVER RADIUS DENTRO DO MIKROTIK							
+						 	$API->write('/radius/add',false);
+						 	$API->write('=service=hotspot',false);
+						 	$API->write('=-address=' . $servidorRadius->IP_FREERADIUS,false);
+						 	$API->write('=secret=' . $servidorRadius->SECRET,false);
+						 	$API->write('=authentication-port=' . $servidorRadius->AUTHENTICATION_PORT,false);
+						 	$API->write('=accounting-port=' . $servidorRadius->ACCOUNTING_PORT,false);
+						 	$API->write('=timeout=' . $servidorRadius->TIMEOUT);						 							 
+						 	$API->read();						 
+						 	
+						 }else
+						 {
+						 	return 'SERVIDOR RADIUS N ENCONTRADO';
+						 }						
+						 
+						 //PEGANDO IP DO SERVER
+						 $arrayIp = explode('/', $faixaClientes);
+						 $ipServerHotspot = $arrayIp[0];					 						   
+						 
+						 //CRIA SERVER PROFILE HOSTSPOT E DEFINE AUTENTICACAO VIA RADIUS
+						 $API->write('/ip/hotspot/profile/add',false);
+						 $API->write('=name=' . $interface->NOME,false);
+						 $API->write('=hotspot-address=' . $ipServerHotspot,false);
+						 $API->write('=dns-name=OpusServer',false);
+						 $API->write('=use-radius=yes',false);
+						 $API->write('=radius-accounting=yes');						 
+						 $API->read();						
+
+						 //CRIA SERVIDOR HOTSPOT
+						 $API->write('/ip/hotspot/add',false);
+						 $API->write('=name=' .'sv'.$interface->NOME,false);
+						 $API->write('=interface=' . $interface->NOME,false);
+						 $API->write('=idle-timeout=00:01:00',false);
+						 $API->write('=keepalive-timeout=00:00:30',false);						 
+						 $API->write('=disabled=no');						 						 
+						 $API->read();
+						 
+						 //PEGA O ID DA ULTIMA INTERFACE CADASTRADA
+							 $queryUltimaInterface = "SELECT * FROM interface ORDER by ID DESC LIMIT 0, 1";
+							 $resultUltimaInterface = mysql_query($queryUltimaInterface);
+							 $rowUltimaInterface = mysql_fetch_assoc($resultUltimaInterface);
+							 $codUltimaInterface = $rowUltimaInterface['ID'];						 
+						 
+						 //CRIAR USERS PROFILES HOTSPOT
+						 $registroPlano = count($planosAcesso);
+						 for($i=0;$i<$registroPlano;$i++)
+						 {
+						 	 $API->write('/ip/hotspot/user/profile/add',false);
+							 $API->write('=name=' . $planosAcesso[$i]->nome,false);
+							 $API->write('=idle-timeout=04:00:00',false);
+							 $API->write('=keepalive-timeout=00:01:00',false);
+							 $API->write('=rate-limit=' . $planosAcesso[$i]->upload.'/'.$planosAcesso[$i]->download,false);						 
+							 $API->write('=status-autorefresh=00:03:00',false);
+							 $API->write('transparent-proxy=no');						 						 
+							 $API->read();		
+
+							 $nomePlano = $planosAcesso[$i]->nome;
+							 $download = $planosAcesso[$i]->download;
+							 $upload = $planosAcesso[$i]->upload;
+							 
+							 //CADASTRAR PLANOS NO BANDO MYSQL
+							 $queryInterface = "INSERT INTO planos_acesso (INTERFACE_ID, NOME, DOWNLOAD, UPLOAD) VALUES 
+							 ('$codUltimaInterface', '$nomePlano', '$download', '$upload')";							
+							 $resultInterface = mysql_query($queryInterface);	
+							 							 
+							 $nomePlano = $codUltimaInterface.'_'.$nomePlano;
+							 
+							 // CADASTRA PLANO NA TABELA MYSQL DO RADIUS
+							 $valueDownloadUpload = $download.'/'.$upload;
+							 $queryInsertRadius = "INSERT INTO radgrouprapley(id,groupname,attribute,op,value) VALUES 
+							 (NULL, '$nomePlano', 'Mikrotik-Rate-Limit', ':=', '$valueDownloadUpload'";
+							 $resultInsertRadius  = mysql_query($queryInsertRadius);
+						 }						
+					}
+					
+					
+					
+					
+					
+					
+						 
+						 //DESCONECTA DO SERVIDOR
+						 $API->disconnect();
+								  	
+						}else 
+						{
+							return 'ERRO';	
+						}
+						
+										
+						
+						
+						
+		
+		
+						
+		
+		//C�DIGO PARA CADASTRAR SERVIDOR RADIUS
+		//INSERT INTO db_opus.servidores_radius (SERVIDORES_ID, IP_FREERADIUS, SECRET, AUTHENTICATION_PORT, ACCOUNTING_PORT, TIMEOUT, USERNAME_MYSQL, PASSWORD_MYSQL) VALUES (1, '192.168.20.13', '123456', '1812', '1813', '300', 'root', '37261827');
+		
+		
+		
+		
+	}
+	
+	
+	//------------CONTRATOS-DE-ACESSO------------------///
+	public function listarContratosAcesso($codEmpresa)
+	{
+		$query = "SELECT * FROM contratos_acesso WHERE EMPRESA_ID = '$codEmpresa'";
+		$result = mysql_query($query);
+		$nRow = mysql_num_rows($result);
+		if($nRow ==0){return 'ERRO';}
+		
+		while ($row = mysql_fetch_assoc($result))
+		{
+			$contrato = new ContratosAcessoVO();
+			
+			$contrato->ID = $row['ID'];
+		  	$contrato->EMPRESA_ID = $row['EMPRESA_ID'];
+		  	$contrato->NOME = $row['NOME'];
+		  	$contrato->CLAUSULAS = $row['CLAUSULAS'];
+		  	$contrato->VIGENCIA = $row['VIGENCIA'];
+		  	$contrato->VALOR_ADESAO = $row['VALOR_ADESAO'];
+		  	$contrato->VALOR_INSTALACAO = $row['VALOR_INSTALACAO'];
+		  	$contrato->REGIME = $row['REGIME'];
+		  	
+		  	$contratos[] = $contrato;
+		}	
+		
+		
+		return $contratos;
+	}
+	public function selecionarContratoAcesso($codContrato)
+	{
+		$query = "SELECT * FROM contratos_acesso WHERE ID = '$codContrato'";
+		$result = mysql_query($query);
+		$nRow = mysql_num_rows($result);
+		if($nRow ==0){return 'ERRO';}
+		
+		$row = mysql_fetch_assoc($result);
+	
+			$contrato = new ContratosAcessoVO();
+			
+			$contrato->ID = $row['ID'];
+		  	$contrato->EMPRESA_ID = $row['EMPRESA_ID'];
+		  	$contrato->NOME = $row['NOME'];
+		  	$contrato->CLAUSULAS = $row['CLAUSULAS'];
+		  	$contrato->VIGENCIA = $row['VIGENCIA'];
+		  	$contrato->VALOR_ADESAO = $row['VALOR_ADESAO'];
+		  	$contrato->VALOR_INSTALACAO = $row['VALOR_INSTALACAO'];
+		  	$contrato->REGIME = $row['REGIME'];
+		  	
+		  
+		
+		
+		return $contrato;
+	}
+	public function cadastrarContratoAcesso(ContratosAcessoVO $contrato)
+	{
+		$query = "INSERT INTO contratos_acesso (EMPRESA_ID, NOME, CLAUSULAS, VIGENCIA, VALOR_ADESAO, REGIME) 
+		VALUES ('$contrato->EMPRESA_ID', '$contrato->NOME', '$contrato->CLAUSULAS', '$contrato->VIGENCIA', '$contrato->VALOR_ADESAO', 
+		'$contrato->REGIME')";
+		
+		if(!$result = mysql_query($query))
+		{
+			return mysql_error();
+		}else{
+			return 'OK';
+		}
+	}
+	public function editarContratoAcesso(ContratosAcessoVO $contrato)
+	{
+		$query = "UPDATE contratos_acesso SET NOME='$contrato->NOME', CLAUSULAS='$contrato->CLAUSULAS', VIGENCIA='$contrato->VIGENCIA', 
+		VALOR_ADESAO='$contrato->VALOR_ADESAO',REGIME='$contrato->REGIME' WHERE ID='$contrato->ID'";
+		
+		if(!$result = mysql_query($query))
+		{
+			return mysql_error();
+		}else{
+			return 'OK';
+		}		
+	}
+	public function excluirContratoAcesso($codContrato)
+	{
+		$query = "DELETE FROM contratos_acesso WHERE ID='$codContrato'";		
+		$result = mysql_query($query);
+	}
+	
+	
+	//------------CREDENCIAIS DE ACESSO----------------------//
+	public function listarCredenciaisAcesso($codEmpresa)
+	{
+		$query = "SELECT acesso_cliente.ID,acesso_cliente.EMPRESA_ID, acesso_cliente.CLIENTES_ID, acesso_cliente.LOGIN, acesso_cliente.SENHA, 
+			acesso_cliente.ENDERECO_IP, acesso_cliente.ENDERECO_MAC,  acesso_cliente.DATA_VENC_CONTRATO, acesso_cliente.DATA_CADASTRO, 
+			acesso_cliente.STATUS_2,
+			clientes.NOME_RAZAO,
+			interface.ID as ID_INTERFACE,interface.NOME as NOME_INTERFACE, 
+			planos_acesso.ID as ID_PLANO_ACESSO,planos_acesso.NOME as NOME_PLANO_ACESSO,
+			servidores.ID as ID_SERVIDOR, servidores.NOME_SERVER, 
+			bases.ID as ID_BASE, bases.NOME as NOME_BASE, 
+			material_acesso.ID as ID_MATERIAL,material_acesso.NOME as NOME_MATERIAL , 
+			contratos_acesso.ID as ID_CONTRATO, contratos_acesso.NOME as NOME_CONTRATO
+					FROM acesso_cliente
+			    LEFT JOIN clientes ON clientes.ID = acesso_cliente.CLIENTES_ID
+			    LEFT JOIN interface ON interface.ID = acesso_cliente.INTERFACE_ID 
+			    LEFT JOIN planos_acesso ON planos_acesso.ID = acesso_cliente.PLANOS_ACESSO_ID
+			    LEFT JOIN servidores ON servidores.ID = acesso_cliente.SERVIDORES_ID
+			    LEFT JOIN bases ON bases.ID = acesso_cliente.BASES_ID    
+			    LEFT JOIN material_acesso ON material_acesso.ID = acesso_cliente.MATERIAL_ACESSO_ID
+			    LEFT JOIN contratos_acesso ON contratos_acesso.ID = acesso_cliente.CONTRATOS_ACESSO_ID
+			    WHERE acesso_cliente.EMPRESA_ID = '$codEmpresa' AND acesso_cliente.STATUS_2 LIKE 'ATIVO'
+			    ORDER by ID DESC";
+		
+		
+		
+		
+		
+		$result = mysql_query($query);
+		$nrow = mysql_num_rows($result);
+		if($nrow == 0){return 'ERRO';}
+		
+		while ($row = mysql_fetch_assoc($result)) {
+			
+			$acessoCliente = new AcessoClienteVO();
+			
+			$dataHoje = date('Y-m-d');
+			$dataAtual = explode('-', $dataHoje);
+			$dataVencimento = explode('-', $row['DATA_VENC_CONTRATO']);
+			
+			$d1 = mktime(0,0,0,$dataAtual[1],$dataAtual[2],$dataAtual[0]);
+			$d2 = mktime(0,0,0,$dataVencimento[1],$dataVencimento[2],$dataVencimento[0]);  
+			$d3 = ($d2-$d1);
+			$dias = ($d3/2592000);
+			$dias = explode('.', $dias);
+			$meses = $dias[0];
+			
+		
+		
+			
+	
+			  
+			
+			
+			
+			$acessoCliente->ID = $row['ID'];
+			$acessoCliente->EMPRESA_ID = $row['EMPRESA_ID'];
+			$acessoCliente->CLIENTES_ID = $row['CLIENTES_ID'];
+			$acessoCliente->LOGIN = $row['LOGIN'];
+			$acessoCliente->SENHA = $row['SENHA'];
+			$acessoCliente->ENDERECO_IP = $row['ENDERECO_IP'];
+			$acessoCliente->ENDERECO_MAC = $row['ENDERECO_MAC'];
+			$acessoCliente->NOME_RAZAO = $row['NOME_RAZAO'];
+			$acessoCliente->ID_INTERFACE = $row['ID_INTERFACE'];
+			$acessoCliente->NOME_INTERFACE = $row['NOME_INTERFACE'];
+			$acessoCliente->ID_PLANO_ACESSO = $row['ID_PLANO_ACESSO'];
+			$acessoCliente->NOME_PLANO_ACESSO = $row['NOME_PLANO_ACESSO'];
+			$acessoCliente->ID_SERVIDOR = $row['ID_SERVIDOR'];
+			$acessoCliente->NOME_SERVER = $row['NOME_SERVER'];
+			$acessoCliente->ID_BASE = $row['ID_BASE'];
+			$acessoCliente->NOME_BASE = $row['NOME_BASE'];
+			$acessoCliente->ID_MATERIAL = $row['ID_MATERIAL'];
+			$acessoCliente->NOME_MATERIAL = $row['NOME_MATERIAL'];
+			$acessoCliente->ID_CONTRATO = $row['ID_CONTRATO'];
+			$acessoCliente->NOME_CONTRATO = $row['NOME_CONTRATO'];
+			$acessoCliente->DATA_VENC_CONTRATO = $row['DATA_VENC_CONTRATO'];
+			$acessoCliente->DATA_CADASTRO = $row['DATA_CADASTRO'];
+			$acessoCliente->DIAS_CONTRATO = $meses;
+			
+			$acessoClientes[] = $acessoCliente;
+			
+		}
+		
+		
+		
+		
+		return $acessoClientes;
+	}
+	
+	public function listarHitoricoAcesso($codAcesso)
+	{
+		//SELECIONA ACESSO
+		$query = "SELECT * FROM acesso_cliente WHERE ID=$codAcesso";
+		if(!$result = mysql_query($query))
+		{
+			return mysql_error();
+		}
+		$nRow = mysql_num_rows($result);
+		if($nRow == 0)
+		{
+			return 'CREDENCIAIS DE ACESSI - NENHUM REGISTRO ENCONTRADO';
+		}
+		$row = mysql_fetch_assoc($result);
+		
+		//VARIAVEIS
+		$USUARIO = $row['LOGIN'];
+		
+		
+		//VERIFICAR INTERFACE SE UTILIZA RADIUS
+		
+		//BUSCAR REGISTRO DE ACESSO NO RADIUS
+		$query1 = "SELECT * FROM radacct WHERE username='$USUARIO' ORDER by radacctid DESC";
+		if(!$result1 = mysql_query($query1))
+		{
+			return mysql_error();
+		}
+		$nRow1 = mysql_num_rows($result1);
+		if($nRow1 == 0)
+		{
+			return 'BUSCA DE REGISTRO DE ACESSO, NENHUM REGISTRO FOI ENCONTRADO';
+		}
+		
+		function convertTime($miliseconds)
+		{
+			if($miliseconds == 0)
+			{
+				return '00:00:00';
+			}
+			
+			$seconds= $miliseconds;
+			//for seconds
+			if($seconds> 0)
+			{
+				$sec= "" . ($seconds%60);
+				if($seconds % 60 <10)
+				{
+					$sec= "0" . ($seconds%60);
+				}
+			}
+			//for mins
+			if($seconds > 60)
+			{
+				$mins= "". ($seconds/60%60);
+				if(($seconds/60%60)<10)
+				{
+					$mins= "0" . ($seconds/60%60);
+				}
+			}else
+			{
+			$mins= "00";
+			}
+			//for hours
+			if($mins/60 > 60)
+			{
+				$hours= "". ($mins/60/60);
+				if(($mins/60/60) < 10)
+				{
+					$hours= "0" . ($mins/60/60);
+				}
+			}else
+			{
+				$hours= "00";
+			}
+
+			return $time_format= "" . $hours . ":" . $mins . ":" . $sec; //00:15:00
+		}
+		
+		
+		function ByteSize($bytes) 
+    {
+    $size = $bytes / 1024;
+    if($size < 1024)
+        {
+        $size = number_format($size, 2);
+        $size .= ' KB';
+        } 
+    else 
+        {
+        if($size / 1024 < 1024) 
+            {
+            $size = number_format($size / 1024, 2);
+            $size .= ' MB';
+            } 
+        else if ($size / 1024 / 1024 < 1024)  
+            {
+            $size = number_format($size / 1024 / 1024, 2);
+            $size .= ' GB';
+            } 
+        }
+    return $size;
+    } 
+		
+		while ( $row1 = mysql_fetch_assoc($result1) ) {
+			
+			$radacct = new RadacctVO();
+			
+			$radacct->radacctid = $row1['radacctid'];
+			$radacct->acctsessionid = $row1['acctsessionid'];
+			$radacct->acctuniqueid = $row1['acctuniqueid'];
+			$radacct->username = $row1['username'];
+			$radacct->groupname = $row1['groupname'];
+			$radacct->realm = $row1['realm'];
+			$radacct->nasipaddress = $row1['nasipaddress'];
+			$radacct->nasportid = $row1['nasportid'];
+			$radacct->nasporttype = $row1['nasporttype'];
+			$radacct->acctstarttime = $row1['acctstarttime'];
+			$radacct->acctstoptime = $row1['acctstoptime'];
+			$radacct->acctsessiontime = convertTime($row1['acctsessiontime']);
+			$radacct->acctauthentic = $row1['acctauthentic'];
+			$radacct->connectinfo_start = $row1['connectinfo_start'];
+			$radacct->connectinfo_stop = $row1['connectinfo_stop'];
+			$radacct->acctinputoctets =ByteSize($row1['acctinputoctets']);
+			$radacct->acctoutputoctets = ByteSize($row1['acctoutputoctets']);
+			$radacct->calledstationid = $row1['calledstationid'];
+			$radacct->callingstationid = $row1['callingstationid'];
+			$radacct->acctterminatecause = $row1['acctterminatecause'];
+			$radacct->servicetype = $row1['servicetype'];
+			$radacct->framedprotocol = $row1['framedprotocol'];
+			$radacct->framedipaddress = $row1['framedipaddress'];
+			$radacct->acctstartdelay = $row1['acctstartdelay'];
+			$radacct->acctstopdelay = $row1['acctstopdelay'];
+			$radacct->xascendsessionsvrkey = $row1['xascendsessionsvrkey'];
+			if($radacct->acctstoptime == '')
+			{
+				$radacct->status = 'ABERTA';
+			}else{
+				$radacct->status = 'FECHADA';
+			}
+			
+			$radaccts[] = $radacct;
+				
+		}
+		
+		return $radaccts;
+	}
+	public function listarClientesScRedenciais($codEmpresa)
+	{
+		$query = "SELECT * FROM clientes WHERE EMPRESA_ID = '$codEmpresa' AND STATUS_2 = 'INATIVO'
+		AND NOT EXISTS (SELECT * from acesso_cliente WHERE CLIENTES_ID = clientes.ID) ORDER by NOME_RAZAO ASC ";
+		$result = mysql_query($query);
+		$nRow = mysql_num_rows($result);
+		if($nRow == 0){return 'ERRO';}
+		
+		while($row = mysql_fetch_assoc($result))
+		{
+
+				$cliente = new ClientesVO();
+				
+				$cliente->ID = $row['ID'];
+				$cliente->NOME_RAZAO = $row['NOME_RAZAO'];
+				
+				$clientes[] = $cliente;
+				
+			
+			
+			
+		}
+		
+				return $clientes;
+		
+	}
+	public function listarClientesCtEncerrado($codEmpresa)
+	{
+		$query = "SELECT acesso_cliente. * , clientes.NOME_RAZAO
+			FROM acesso_cliente LEFT JOIN clientes ON clientes.ID = acesso_cliente.CLIENTES_ID 
+      WHERE acesso_cliente.EMPRESA_ID = '$codEmpresa' AND acesso_cliente.STATUS_2 = 'ENCERRADO'
+			ORDER by acesso_cliente.ID DESC";
+		
+		$result = mysql_query($query);
+		$nRow = mysql_num_rows($result);
+		if($nRow == 0){return 'ERRO';}
+		
+		while($row = mysql_fetch_assoc($result))
+		{
+
+				$cliente = new ClientesVO();
+				
+				$cliente->ID = $row['ID'];
+				$cliente->NOME_RAZAO = $row['NOME_RAZAO'];
+				
+				$clientes[] = $cliente;		
+		}	
+				return $clientes;		
+	}
+	public function listarInterfacesPorServidor($codEmpresa)
+	{
+		$query = "SELECT * FROM interface WHERE SERVIDORES_ID = (SELECT servidores.ID from servidores WHERE DEFAULT_2 = 1 AND 
+		EMPRESA_ID = '$codEmpresa')";
+		$result = mysql_query($query);
+		$nRow = mysql_num_rows($result);
+		if($nRow == 0){return 'ERRO';}
+		
+		while($row = mysql_fetch_assoc($result))
+		{
+			$interface = new InterfacesVO();
+			$interface->ID = $row['ID'];
+			$interface->SERVIDORES_ID = $row['SERVIDORES_ID']; 
+			$interface->SERVIDOR_RADIUS_ID = $row['SERVIDOR_RADIUS_ID'];	
+			$interface->NOME = $row['NOME'];
+			$interface->DESCRICAO = $row['DESCRICAO'];
+			$interface->HOSTPOT = $row['HOSTPOT'];
+			$interface->PPOE = $row['PPOE'];
+			$interface->SIMPLES_QUEUE = $row['SIMPLES_QUEUE'];
+			$interface->HOTSPOT_RADIUS = $row['HOTSPOT_RADIUS'];
+			
+			$interfaces[] = $interface;
+		}
+		
+		return $interfaces;
+	}
+	public function selecionarInterface($codInterface)
+	{
+		$query = "SELECT interface.*, servidores_radius.ID as ID_SERVIDOR_RADIUS, 
+		servidores_radius.NOME as NOME_SERVIDOR_RADIUS, 
+		servidores.ID as ID_SERVIDOR, servidores.NOME_SERVER as NOME_SERVIDOR
+		FROM interface
+		LEFT JOIN servidores_radius ON servidores_radius.ID = interface.SERVIDOR_RADIUS_ID
+		LEFT JOIN servidores ON servidores.ID = interface.SERVIDORES_ID
+		WHERE interface.ID = $codInterface";
+		
+		$result = mysql_query($query);
+		$nRow = mysql_num_rows($result);
+		if($nRow == 0){return 'ERRO';}
+		
+		$row = mysql_fetch_assoc($result);
+		
+			$interface = new InterfacesVO();
+			$interface->ID = $row['ID'];
+			$interface->SERVIDORES_ID = $row['SERVIDORES_ID']; 
+			$interface->SERVIDOR_RADIUS_ID = $row['SERVIDOR_RADIUS_ID'];			
+			$interface->NOME = $row['NOME'];
+			$interface->DESCRICAO = $row['DESCRICAO'];
+			$interface->HOSTPOT = $row['HOSTPOT'];
+			$interface->PPOE = $row['PPOE'];
+			$interface->SIMPLES_QUEUE = $row['SIMPLES_QUEUE'];
+			$interface->HOTSPOT_RADIUS = $row['HOTSPOT_RADIUS'];			
+			$interface->ID_SERVIDOR_RADIUS= $row['ID_SERVIDOR_RADIUS'];
+			$interface->NOME_SERVIDOR_RADIUS= $row['NOME_SERVIDOR_RADIUS'];
+			$interface->ID_SERVIDOR= $row['ID_SERVIDOR'];
+			$interface->NOME_SERVIDOR= $row['NOME_SERVIDOR'];
+		
+		
+		return $interface;
+	}
+	public function listarInterfacesPorServidorSelecionado($codServidor)
+	{
+		$query = "SELECT * FROM interface WHERE SERVIDORES_ID = $codServidor";
+		$result = mysql_query($query);
+		$nRow = mysql_num_rows($result);
+		if($nRow == 0){return 'ERRO';}
+		
+		while($row = mysql_fetch_assoc($result))
+		{
+			$interface = new InterfacesVO();
+			$interface->ID = $row['ID'];
+			$interface->SERVIDORES_ID = $row['SERVIDORES_ID']; 
+			$interface->SERVIDOR_RADIUS_ID = $row['SERVIDOR_RADIUS_ID'];	
+			$interface->NOME = $row['NOME'];
+			$interface->DESCRICAO = $row['DESCRICAO'];
+			$interface->HOSTPOT = $row['HOSTPOT'];
+			$interface->PPOE = $row['PPOE'];
+			$interface->SIMPLES_QUEUE = $row['SIMPLES_QUEUE'];
+			$interface->HOTSPOT_RADIUS = $row['HOTSPOT_RADIUS'];
+			
+			$interfaces[] = $interface;
+		}
+		
+		return $interfaces;
+	}
+	public function listarServidoresRadius($codServidor)
+	{
+		$query = "SELECT * FROM servidores_radius where SERVIDORES_ID = $codServidor";
+		$result = mysql_query($query);
+		$nRow = mysql_num_rows($result);
+		if($nRow == 0){return 'ERRO';}
+		
+		while($row = mysql_fetch_assoc($result))
+		{
+			$servidorRadius = new ServidoresRadiusVO();
+			
+			$servidorRadius->ID = $row['ID'];
+			$servidorRadius->SERVIDORES_ID= $row['SERVIDORES_ID'];
+			$servidorRadius->NOME= $row['NOME'];
+			$servidorRadius->IP_FREERADIUS= $row['IP_FREERADIUS'];
+			$servidorRadius->SECRET= $row['SECRET'];
+			$servidorRadius->AUTHENTICATION_PORT= $row['AUTHENTICATION_PORT'];
+			$servidorRadius->ACCOUNTING_PORT= $row['ACCOUNTING_PORT'];
+			$servidorRadius->TIMEOUT= $row['TIMEOUT'];
+			$servidorRadius->USERNAME_MYSQL= $row['USERNAME_MYSQL'];
+			$servidorRadius->PASSWORD_MYSQL= $row['PASSWORD_MYSQL'];
+			$servidorRadius->BANCO_DADOS= $row['BANCO_DADOS'];
+			
+			$servidorRadiusS[] = $servidorRadius;
+		}
+		
+		return $servidorRadiusS;
+	}
+	public function excluirInterface($codInterface)
+	{
+		$query = "DELETE FROM interface WHERE ID = $codInterface";
+		$result = mysql_query($query);
+	}
+	public function listarPlanosAcessoPorInterfaces($codInterface)
+	{
+		$query = "SELECT * FROM planos_acesso WHERE INTERFACE_ID = '$codInterface'";
+		$result = mysql_query($query);
+		$nRow = mysql_num_rows($result);
+		if($nRow == 0){return 'ERRO';}
+		
+		while ($row = mysql_fetch_assoc($result)) {
+			
+			$plano = new PlanosAcessoVO();
+			
+			$plano->ID = $row['ID'];
+			$plano->INTERFACE_ID = $row['INTERFACE_ID'];
+			$plano->NOME = $row['NOME'];
+			$plano->RATE_LIMIT = $row['RATE_LIMIT'];
+			$plano->SHARED_USERS = $row['SHARED_USERS'];
+			$plano->SESSION_TIMEOUT = $row['SESSION_TIMEOUT'];
+			$plano->KEEPALIVE_TIMEOUT = $row['KEEPALIVE_TIMEOUT'];
+			$plano->IDLE_TIMEOUT = $row['IDLE_TIMEOUT'];
+			$plano->STATUS_AUTOREFRESH = $row['STATUS_AUTOREFRESH'];			
+			$plano->VALOR = $row['VALOR'];
+			
+			$planos[] = $plano;
+		}
+		return $planos;
+	}
+	public function editarCredencialAcesso(AcessoClienteVO $aC)
+	{
+		$aC->ENDERECO_MAC = $aC->ENDERECO_MAC2;
+		
+		
+		//-----VERIFICAR TIPO DE AUTENTICA��O E CONTROLE DE BANDA PARA INTERFACE ESCOLHIDA
+		$queryAutenBandaInterface = "SELECT * FROM interface WHERE ID = '$aC->ID_INTERFACE'";
+		$resultAutenBandaInterface = mysql_query($queryAutenBandaInterface);
+		$nRowAutenBandaInterface = mysql_num_rows($resultAutenBandaInterface);
+		if($nRowAutenBandaInterface == 0){return 'INTERFACE NAUM ENCONTRADA';}
+				
+		$rowAutenBandaInterface = mysql_fetch_assoc($resultAutenBandaInterface);
+		
+		
+		 
+		//DEFINE NOME INTERFACE
+		 $nomeInterface =$rowAutenBandaInterface['NOME']; 
+		
+		//DEFINE SERVIDOR
+		$codServidor = $rowAutenBandaInterface['SERVIDORES_ID'];
+		
+		//DEFINE COD DO SERVIDOR RADIUS
+		 $codServidorRadius = $rowAutenBandaInterface['SERVIDOR_RADIUS_ID'];
+		
+		
+		//DEFINE TIPO DE AUTENTICACAO
+		if($rowAutenBandaInterface['HOSTPOT'] == 1)
+		{
+			$tipoAutenBanda = 1;
+		}
+		if($rowAutenBandaInterface['PPOE'] == 1)
+		{
+			$tipoAutenBanda = 2;
+		}
+		if($rowAutenBandaInterface['SIMPLES_QUEUE'] == 1)
+		{
+			$tipoAutenBanda = 3;
+		}
+		if($rowAutenBandaInterface['HOTSPOT_RADIUS'] == 1)
+		{
+			$tipoAutenBanda = 4;
+		}
+		
+		
+		
+		$queryServidorDefault = "SELECT * FROM servidores WHERE ID=$codServidor";
+		$resultServidorDefault = mysql_query($queryServidorDefault);
+		$nRowServidorDefault = mysql_num_rows($resultServidorDefault);
+		if($nRowServidorDefault == 0){return 'NENHUM SERVIDOR PADRAO FOI ENCONTRADO';}
+		
+		$rowServidorDefault = mysql_fetch_assoc($resultServidorDefault);
+		
+		$ip = $rowServidorDefault['ENDERECO_IP'];
+		$usuario = $rowServidorDefault['USUARIO'];
+		$senha = $rowServidorDefault['SENHA'];
+		$porta = $rowServidorDefault['PORTA_API'];
+	
+	//VARIAVEIS ESTANCIADAS API
+		$API = new routeros_api();
+		$API->port = $porta;					
+		$API->debug = true;
+	
+			if($tipoAutenBanda == 1)
+			{	
+				
+
+				if ($API->connect($ip, $usuario, $senha)) {
+			
+							
+					  //PROCURA CLIENTE NO HOTSPOT
+					  $API->write('/ip/hotspot/user/print',false);
+					  $API->write('?name=' . $aC->LOGIN);
+					  $userArray = $API->read();
+					  $userID = $userArray[0]['.id'];
+					 					  
+					  $API->write('/ip/hotspot/user/remove',false);
+					  $API->write('=numbers=' . $userID);
+					 // $API->write('=comment=' . $comment. ' ENCERRADO');
+					  $API->read();	
+							
+						
+						
+						
+					//CADASTRA USUARIO NO HOTSPOT
+					  $API->write('/ip/hotspot/user/add',false);
+					  $API->write('=address=' . $aC->ENDERECO_IP,false);
+					  $API->write('=mac-address=' . $aC->ENDERECO_MAC,false);
+					  $API->write('=profile=' . $aC->NOME_PLANO_ACESSO,false);
+					  $API->write('=server=' . 'sv'.$aC->NOME_INTERFACE,false);
+					  $API->write('=name=' . $aC->LOGIN,false);
+					  $API->write('=password=' . $aC->SENHA,false);
+					  $API->write('=comment=' . $aC->NOME_RAZAO);
+						$API->read();	
+					  
+					  //ATUALIZA ACESSO_CLIENTE
+						$query = "UPDATE acesso_cliente SET SENHA='$aC->SENHA', ENDERECO_MAC='$aC->ENDERECO_MAC2' WHERE ID='$aC->ID'";
+						if(!$result = mysql_query($query))
+						{
+							return 'ATUALIZAR ACESSO CLIENTE: '.mysql_error();
+						}
+					  
+				}else{
+					return 'EDITAR CREDENCIAIS: NAO FOI POSSIVEL CONECTAR AO SERVIDOR';
+				}	  			  
+			 
+			}
+			//CASO UTILIZE SIMPLES QUEUE, ALTERA SOMENTE O MAC
+			if($tipoAutenBanda == 3)
+			{
+				
+				$queryPegarValorPlano = "SELECT * FROM planos_acesso WHERE ID = '$aC->ID_PLANO_ACESSO'";
+				$resultPegarValorPlano = mysql_query($queryPegarValorPlano);
+				$nRowPegarValorPlano = mysql_num_rows($resultPegarValorPlano);
+				if($nRowPegarValorPlano == 0){return 'ERRO: NENHUM PLANO FOI ENCONTRADO';}
+				$rowPegarValorPlano = mysql_fetch_assoc($resultPegarValorPlano);
+				$DOWNLOAD = $rowPegarValorPlano['DOWNLOAD'];
+				
+				
+				$ipMK1 = substr($aC->ENDERECO_IP, 0, -1);
+				$ipMK2 = substr($aC->ENDERECO_IP , -1);
+				$ipMK3 = $ipMK2 + 1;
+			
+				$ip2 = $ipMK1.$ipMK3;
+		
+				//CADASTRA CONTROLE DE BANDA NO QUEUE DO SERVIDOR
+				$API->write('/queue/simple/add',false);
+				$API->write('=name=' . "<".$aC->NOME_INTERFACE."> ".$aC->NOME_RAZAO,false);
+				$API->write('=target-addresses=' . $ip2,false);
+				$API->write('=max-limit=' . $DOWNLOAD.'/'.$UPLOAD);			
+				$API->read();	
+				
+				//queue simple add name=TESTE target-addresses=18.18.0.2 max-limit=800k/800k
+				
+				//ATUALIZA ACESSO_CLIENTE
+		$query = "UPDATE acesso_cliente SET SENHA='$aC->SENHA', ENDERECO_MAC='$aC->ENDERECO_MAC2' WHERE ID='$aC->ID'";
+		if(!$result = mysql_query($query))
+		{
+			return 'ATUALIZAR ACESSO CLIENTE: '.mysql_error();
+		}
+			}
+			
+			
+			 //CASO UTILIZE RADIUS + HOTSPOT
+			if($tipoAutenBanda == 4)
+			{
+				
+				//BUSCAR SERVIDOR RADIUS ASSOCIADO;
+			   $queryServidorRadius = "SELECT * FROM servidores_radius WHERE ID = $codServidorRadius";
+			   $resultServidorRadius = mysql_query($queryServidorRadius);
+			   $nRowServidorRadius = mysql_num_rows($resultServidorRadius);
+			   if($nRowServidorRadius == 0){return 'ERRO: SERVIDOR RADIUS N�O ENCONTRADO';}
+			   $rowServidorRadius = mysql_fetch_assoc($resultServidorRadius);
+		   
+			   //DEFINE PARAMETROS DO SERVIDOR RADIUS
+			   $ipRadius = $rowServidorRadius['IP_FREERADIUS'];
+			   $userMysql = $rowServidorRadius['USERNAME_MYSQL'];
+			   $senhaMysql = $rowServidorRadius['PASSWORD_MYSQL'];
+			   $bancoMysql = $rowServidorRadius['BANCO_DADOS'];
+			   
+			   //ATUALIZA ACESSO_CLIENTE
+		$query = "UPDATE acesso_cliente SET SENHA='$aC->SENHA', ENDERECO_MAC='$aC->ENDERECO_MAC2' WHERE ID='$aC->ID'";
+		if(!$result = mysql_query($query))
+		{
+			return 'ATUALIZAR ACESSO CLIENTE: '.mysql_error();
+		}
+
+		   //TENTA CONECTAR AO SERVIDOR MYSQL
+		   if($con = mysql_pconnect($ipRadius, $userMysql, $senhaMysql))
+		   {
+		   	
+			   			   	
+				$queryRadCheckUPsenha = "UPDATE ".$bancoMysql.".radcheck SET  value='$aC->SENHA' WHERE attribute='Password'AND username='$aC->LOGIN'";
+				$queryRadCheckUPmac = "UPDATE ".$bancoMysql.".radcheck SET  value='$aC->ENDERECO_MAC' WHERE attribute='Calling-Station-ID' AND username='$aC->LOGIN'";
+				
+										
+				if(!$resultRadCheckUPsenha = mysql_query($queryRadCheckUPsenha, $con))
+			   	{
+			   		return 'ERRO ATUALIZAR SENHA: '.mysql_error();
+			   	}	
+		   		if(!$resultRadCheckUPmac = mysql_query($queryRadCheckUPmac, $con))
+			   	{
+			   		return 'ERRO ATUALIZA MAC: '.mysql_error();
+			   	}
+			   				
+						
+		   
+		   }else{
+		   		return 'ERRO: '.mysql_error();
+		   }
+		   		//FECHA CONEX�O REMOTA
+		   		mysql_close($con);
+				
+			}
+			
+			 
+		return 'ok';
+	}
+	public function cadastrarCredenciaisAcesso(AcessoClienteVO $aC)
+	{
+	
+		//DATA DE CADASTRO
+		$aC->DATA_CADASTRO = date('Y-m-d');
+
+		//-----PEGA VIGENCIA DO CONTRATO
+		$queryVigenciaContrato = "SELECT * FROM contratos_acesso WHERE ID = '$aC->ID_CONTRATO'";
+		$resultVigenciaContrato = mysql_query($queryVigenciaContrato);
+		$nRowVigenciaContrato = mysql_num_rows($resultVigenciaContrato);
+		if($nRowVigenciaContrato == 0){return 'NENHUM CONTRATO FOI ENCONTRADO';}
+		$rowVigenciaContrato = mysql_fetch_assoc($resultVigenciaContrato);
+		$vigenciaContrato = $rowVigenciaContrato['VIGENCIA'];
+		$valorAdesao = $rowVigenciaContrato['VALOR_ADESAO'];
+		$valorInstalacao = $rowVigenciaContrato['VALOR_INSTALACAO'];
+		
+		//DEFINIR DATA DE TERMINO DE CONTRATO
+		
+
+			$data = $aC->DATA_CADASTRO;
+			$data = explode("-", $data);
+    		$newData = date('Y-m-d', mktime(0, 0, 0, $data[1]+$vigenciaContrato, $data[2], $data[0]));
+    		
+    		$aC->DATA_VENC_CONTRATO = $newData;
+    		
+    			$ipMK1 = substr($aC->ENDERECO_IP, 0, -1);
+				$ipMK2 = substr($aC->ENDERECO_IP , -1);
+				$ipMK3 = $ipMK2 ;
+			
+				$ip2 = $ipMK1.$ipMK3;
+		
+		//-----BANCO DE DADOS MYSQL
+		$query = "INSERT INTO acesso_cliente (INTERFACE_ID, PLANOS_ACESSO_ID, SERVIDORES_ID, BASES_ID, MATERIAL_ACESSO_ID, 
+		CONTRATOS_ACESSO_ID, EMPRESA_ID, CLIENTES_ID, LOGIN, SENHA, ENDERECO_IP, ENDERECO_MAC, DATA_VENC_CONTRATO, DATA_CADASTRO, STATUS_2) VALUES 
+		('$aC->ID_INTERFACE', '$aC->ID_PLANO_ACESSO', '$aC->ID_SERVIDOR', '$aC->ID_BASE', '$aC->ID_MATERIAL', '$aC->ID_CONTRATO', 
+		'$aC->EMPRESA_ID','$aC->CLIENTES_ID' , '$aC->LOGIN', '$aC->SENHA', '$ip2', '$aC->ENDERECO_MAC', '$aC->DATA_VENC_CONTRATO',
+		'$aC->DATA_CADASTRO', 'ATIVO')";
+		
+		$result = mysql_query($query);
+		
+		//-----SERVIDOR DEFAULT
+		$queryServidorDefault = "SELECT * FROM servidores WHERE DEFAULT_2 = 1 AND EMPRESA_ID = '$aC->EMPRESA_ID'";
+		$resultServidorDefault = mysql_query($queryServidorDefault);
+		$nRowServidorDefault = mysql_num_rows($resultServidorDefault);
+		if($nRowServidorDefault == 0){return 'NENHUM SERVIDOR PADRAO FOI ENCONTRADO';}
+		
+		$rowServidorDefault = mysql_fetch_assoc($resultServidorDefault);
+		
+		$ip = $rowServidorDefault['ENDERECO_IP'];
+		$usuario = $rowServidorDefault['USUARIO'];
+		$senha = $rowServidorDefault['SENHA'];
+		$porta = $rowServidorDefault['PORTA_API'];
+ 			
+		//-----VERIFICAR TIPO DE AUTENTICA��O E CONTROLE DE BANDA PARA INTERFACE ESCOLHIDA
+		$queryAutenBandaInterface = "SELECT * FROM interface WHERE ID = '$aC->ID_INTERFACE'";
+		$resultAutenBandaInterface = mysql_query($queryAutenBandaInterface);
+		$nRowAutenBandaInterface = mysql_num_rows($resultAutenBandaInterface);
+		if($nRowAutenBandaInterface == 0){return 'INTERFACE NAUM ENCONTRADA';}
+				
+		$rowAutenBandaInterface = mysql_fetch_assoc($resultAutenBandaInterface);
+		
+		
+		
+		//DEFINE NOME INTERFACE
+		$nomeInterface =$rowAutenBandaInterface['NOME']; 
+		
+		//DEFINE SERVIDOR
+		$codServidor = $rowAutenBandaInterface['SERVIDORES_ID'];
+		
+		//DEFINE COD DO SERVIDOR RADIUS
+		$codServidorRadius = $rowAutenBandaInterface['SERVIDOR_RADIUS_ID'];
+		
+		
+		//DEFINE TIPO DE AUTENTICACAO
+		if($rowAutenBandaInterface['HOSTPOT'] == 1)
+		{
+			$tipoAutenBanda = 1;
+		}
+		if($rowAutenBandaInterface['PPOE'] == 1)
+		{
+			$tipoAutenBanda = 2;
+		}
+		if($rowAutenBandaInterface['SIMPLES_QUEUE'] == 1)
+		{
+			$tipoAutenBanda = 3;
+		}
+		if($rowAutenBandaInterface['HOTSPOT_RADIUS'] == 1)
+		{
+			$tipoAutenBanda = 4;
+		}
+		
+		
+		
+		//VARIAVEIS ESTANCIADAS API
+		$API = new routeros_api();
+		$API->port = $porta;					
+		$API->debug = true;
+				
+
+		if ($API->connect($ip, $usuario, $senha)) {
+			
+				$ipMK1 = substr($aC->ENDERECO_IP, 0, -1);
+				$ipMK2 = substr($aC->ENDERECO_IP , -1);
+				$ipMK3 = $ipMK2 - 1;
+			
+				$ip2 = $ipMK1.$ipMK3;
+			
+			 //ADICIONAR IP INTERFACE PARA O CLIENTE;
+			  $API->write('/ip/address/add',false);
+			  $API->write('=address=' . $ip2.'/30',false);
+			  $API->write('=interface=' .  $aC->NOME_INTERFACE, false);
+			  $API->write('=comment=' . $aC->NOME_RAZAO);
+			  $API->read();
+		
+			  //CASO UTILIZE HOTSPOT
+			if($tipoAutenBanda == 1)
+			{								
+						
+			 //CADASTRA USUARIO NO HOTSPOT
+			  $API->write('/ip/hotspot/user/add',false);
+			  $API->write('=address=' . $aC->ENDERECO_IP,false);
+			  $API->write('=mac-address=' . $aC->ENDERECO_MAC,false);
+			  $API->write('=profile=' . $aC->NOME_PLANO_ACESSO,false);
+			  $API->write('=server=' . 'sv'.$aC->NOME_INTERFACE,false);
+			  $API->write('=name=' . $aC->LOGIN,false);
+			  $API->write('=password=' . $aC->SENHA,false);
+			  $API->write('=comment=' . $aC->NOME_RAZAO);
+			  $API->read();			  			  
+			 
+			}
+			//CASO UTILIZE SIMPLES QUEUE
+			if($tipoAutenBanda == 3)
+			{
+				
+				$queryPegarValorPlano = "SELECT * FROM planos_acesso WHERE ID = '$aC->ID_PLANO_ACESSO'";
+				$resultPegarValorPlano = mysql_query($queryPegarValorPlano);
+				$nRowPegarValorPlano = mysql_num_rows($resultPegarValorPlano);
+				if($nRowPegarValorPlano == 0){return 'ERRO: NENHUM PLANO FOI ENCONTRADO';}
+				$rowPegarValorPlano = mysql_fetch_assoc($resultPegarValorPlano);
+				$DOWNLOAD = $rowPegarValorPlano['DOWNLOAD'];
+				
+				
+				$ipMK1 = substr($aC->ENDERECO_IP, 0, -1);
+				$ipMK2 = substr($aC->ENDERECO_IP , -1);
+				$ipMK3 = $ipMK2 + 1;
+			
+				$ip2 = $ipMK1.$ipMK3;
+		
+				//CADASTRA CONTROLE DE BANDA NO QUEUE DO SERVIDOR
+				$API->write('/queue/simple/add',false);
+				$API->write('=name=' . "<".$aC->NOME_INTERFACE."> ".$aC->NOME_RAZAO,false);
+				$API->write('=target-addresses=' . $ip2,false);
+				$API->write('=max-limit=' . $DOWNLOAD.'/'.$UPLOAD);			
+				$API->read();	
+				
+				//queue simple add name=TESTE target-addresses=18.18.0.2 max-limit=800k/800k
+			}
+			
+			
+			 //CASO UTILIZE RADIUS + HOTSPOT
+			if($tipoAutenBanda == 4)
+			{
+				
+				//BUSCAR SERVIDOR RADIUS ASSOCIADO;
+			   $queryServidorRadius = "SELECT * FROM servidores_radius WHERE ID = $codServidorRadius";
+			   $resultServidorRadius = mysql_query($queryServidorRadius);
+			   $nRowServidorRadius = mysql_num_rows($resultServidorRadius);
+			   if($nRowServidorRadius == 0){return 'ERRO: SERVIDOR RADIUS N�O ENCONTRADO';}
+			   $rowServidorRadius = mysql_fetch_assoc($resultServidorRadius);
+		   
+			   //DEFINE PARAMETROS DO SERVIDOR RADIUS
+			   $ipRadius = $rowServidorRadius['IP_FREERADIUS'];
+			   $userMysql = $rowServidorRadius['USERNAME_MYSQL'];
+			   $senhaMysql = $rowServidorRadius['PASSWORD_MYSQL'];
+			   $bancoMysql = $rowServidorRadius['BANCO_DADOS'];
+
+		   //TENTA CONECTAR AO SERVIDOR MYSQL
+		   if($con = mysql_pconnect($ipRadius, $userMysql, $senhaMysql))
+		   {
+		   	
+			   	//CADASTRA USU�RIO,SENHA,IP E MAC NA TABELA MYSQL DO RADIUS
+			   	
+			   	
+			   	$ipMK1 = substr($aC->ENDERECO_IP, 0, -1);
+				$ipMK2 = substr($aC->ENDERECO_IP , -1);
+				$ipMK3 = $ipMK2;
+			
+				$ip2 = $ipMK1.$ipMK3;
+			   	
+				$queryRadCheck = "INSERT INTO ".$bancoMysql.".radcheck(username,attribute,op,value)VALUES
+				('$aC->LOGIN', 'Password','==','$aC->SENHA'),
+				('$aC->LOGIN', 'Calling-Station-ID', '==' , '$aC->ENDERECO_MAC'),
+				('$aC->LOGIN', 'Framed-IP-Address' , '==' , '$ip2')";
+				
+				
+				
+				if(!$resultRadCheck = mysql_query($queryRadCheck, $con))
+			   	{
+			   		return 'ERRO: '.mysql_error();
+			   	}	
+				
+				$nomePlanoRadius = $aC->ID_INTERFACE.'_'.$aC->NOME_PLANO_ACESSO;
+				
+				//CADASTRA USUARIO NO PLANO DO RADIUS
+				$queryRadUserGroup = "INSERT INTO ".$bancoMysql.".radusergroup(username,groupname,priority )VALUES
+				('$aC->LOGIN','$nomePlanoRadius','1')";
+				
+								
+				if(!$resultRadUserGroup = mysql_query($queryRadUserGroup, $con))
+			   	{
+			   		return 'ERRO: '.mysql_error();
+			   	}		
+		   
+		   }else{
+		   		return 'ERRO: '.mysql_error();
+		   }
+		   		//FECHA CONEX�O REMOTA
+		   		mysql_close($con);
+				
+			}
+			
+			 $API->disconnect();
+		}
+		
+		
+		
+		new BaseClass();
+		$queryPegarValorPlano = "SELECT * FROM planos_acesso WHERE ID = '$aC->ID_PLANO_ACESSO'";
+		$resultPegarValorPlano = mysql_query($queryPegarValorPlano);
+		$nRowPegarValorPlano = mysql_num_rows($resultPegarValorPlano);
+		if($nRowPegarValorPlano == 0){return 'NENHUM PLANO FOI ENCONTRADO';}
+		$rowPegarValorPlano = mysql_fetch_assoc($resultPegarValorPlano);
+		$valorPlano = $rowPegarValorPlano['VALOR'];
+		
+		//------------GERAR TITULOS NO FINANCEIRO DA EMPRESA E CLIENTES
+	
+						
+							
+				$quantidade = $vigenciaContrato;
+   				$_prazo = 0;   
+    		  
+				
+				for($i=0;$i < $quantidade;$i++)
+   				{
+		
+					$sequencia = $i;
+					if($i ==0){
+						$sequencia++;
+					}else if($i == $sequencia){
+						$sequencia++;
+					}
+					
+					$sequencia2 = str_pad($sequencia, 2, "0", STR_PAD_LEFT);
+					$ano = date('y');
+
+					
+					$queryUltimoBoleto = "SELECT * FROM contas_receber WHERE CLIENTES_ID = '$aC->CLIENTES_ID' ORDER by ID DESC";
+					$resultUltimoBoleto = mysql_query($queryUltimoBoleto);
+					$rowUltimoBoleto = mysql_fetch_assoc($resultUltimoBoleto);			
+			    	$nRowUltimoBoleto = mysql_num_rows($resultUltimoBoleto);
+			    	if($nRowUltimoBoleto == 0)
+			    	{
+			    		$ultimoNumero = str_pad("1", 6, "0", STR_PAD_LEFT);
+			    	}else
+			    	{
+			    		$ultimoValor = ltrim(substr($rowUltimoBoleto['N_NUMERO'], -6)+1, "0");
+			    		
+			    		$ultimoNumero = str_pad($ultimoValor, 6, "0", STR_PAD_LEFT);
+			    		
+			    	}
+			    	
+           			$NumeroNovo = $aC->CLIENTES_ID.$ultimoNumero;
+					
+					
+					//$dataPrimeiroBoleto = "10/01/2011";
+					$_dia = substr($aC->DATA_BOLETO, 0, 2);
+   					$_mes = substr($aC->DATA_BOLETO, 3, 2);
+   					$_ano  = substr($aC->DATA_BOLETO, 6, 4);
+			
+	   				$_ts = mktime(0,0,0,$_mes+$_prazo,$_dia,$_ano);
+       				$_data = date('Y-m-d',$_ts);
+	   				
+	   				
+	  				
+					$emissao = date('Y-m-d');
+					
+					
+					
+					$ndocumento = $aC->CLIENTES_ID.'/'.$ano.'/'.$sequencia2; 
+					
+					
+					
+					//Inserindo
+					$sql = "INSERT INTO contas_receber (N_DOC,CLIENTES_ID,DATA_VENCIMENTO,VALOR_TITULO, STATUS_2, DATA_EMISSAO, N_NUMERO, 
+					CONTROLE, EMPRESA_ID) VALUES
+					('$ndocumento', '$aC->CLIENTES_ID', '$_data','$valorPlano', 'ABERTO', '$emissao','$NumeroNovo', '$ndocumento', '$aC->EMPRESA_ID')";
+					 
+					$resultadoSql = mysql_query($sql);
+        			
+        			//supondo que o vencimento � de 30 em 30 dias 
+					
+        			$_prazo += 1;
+        			
+    			
+    			}
+				        			
+    			//------GERAR BOLETO DE ADESAO CASO HOUVER
+    			if(strlen($valorAdesao) > 0)
+    			{
+    				$queryUltimoBoletoAdesao = "SELECT * FROM contas_receber WHERE CLIENTES_ID = '$aC->CLIENTES_ID' ORDER by ID DESC LIMIT 0,1";
+					$resultUltimoBoletoAdesao = mysql_query($queryUltimoBoletoAdesao);
+					$rowUltimoBoletoAdesao = mysql_fetch_assoc($resultUltimoBoletoAdesao);			
+			    	$nRowUltimoBoletoAdesao = mysql_num_rows($resultUltimoBoletoAdesao);
+			    	if($nRowUltimoBoletoAdesao == 0)
+			    	{
+			    		$ultimoNumeroAdesao = str_pad("1", 6, "0", STR_PAD_LEFT);
+			    	}else
+			    	{
+			    		$ultimoValorAdesao = ltrim(substr($rowUltimoBoletoAdesao['N_NUMERO'], -6)+1, "0");
+			    		
+			    		$ultimoNumeroAdesao = str_pad($ultimoValorAdesao, 6, "0", STR_PAD_LEFT);
+			    		
+			    	}
+			    	
+           		$NumeroNovoAdesao = $aC->CLIENTES_ID.$ultimoNumeroAdesao;
+           			
+    			$nDocAdesao  = $aC->CLIENTES_ID.'/ADESAO';
+    			$valorAdesao = $rowVigenciaContrato['VALOR_ADESAO'];
+    			if($valorAdesao != "0,00"){
+    			$queryAdesao = "INSERT INTO contas_receber (N_DOC,CLIENTES_ID,DATA_VENCIMENTO,VALOR_TITULO, STATUS_2, DATA_EMISSAO, N_NUMERO, 
+					CONTROLE, EMPRESA_ID) VALUES
+					('$nDocAdesao', '$aC->CLIENTES_ID', '$aC->DATA_CADASTRO','$valorAdesao', 'ABERTO','$aC->DATA_CADASTRO','$NumeroNovoAdesao', '$nDocAdesao', '$aC->EMPRESA_ID')";
+					 
+				 $resultAdesao = mysql_query($queryAdesao);
+    			}
+    			}
+				
+				//ATUALIZAR CLIENTE PARA ATIVO
+				$query1 = "UPDATE clientes SET STATUS_2='ATIVO' WHERE ID=$aC->CLIENTES_ID";
+				if(!$result1 = mysql_query($query1))
+				{
+					return 'CADASTRAR CREDENCIAIS: NAO FOI POSSIVEL ATUALIZAR O STATUS DO CLIENTE PARA ATIVO '.mysql_error();
+				}
+				
+				
+				
+		return 'OK';
+		
+	}	
+	public function checarDisponibilidadeDeIp($ip)
+	{
+		$query = "SELECT * FROM acesso_cliente WHERE ENDERECO_IP LIKE '$ip'";
+		$result = mysql_query($query);
+		$nRow = mysql_num_rows($result);
+		if($nRow > 0)
+		{
+			return 'IP NAUM DISPONIVEL';
+		}
+	}
+	public function checarDisponibilidadeDeUsuario($usuario)
+	{
+		$query = "SELECT * FROM acesso_cliente WHERE LOGIN LIKE '$usuario'";
+		$result = mysql_query($query);
+		$nRow = mysql_num_rows($result);
+		if($nRow > 0)
+		{
+			return 'USUARIO NAUM DISPONIVEL';
+		}
+	}
+	public function validateIpAddress($ip_addr)
+	{
+	  //first of all the format of the ip address is matched
+	  if(preg_match("/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/",$ip_addr))
+	  {
+	    //now all the intger values are separated
+	    $parts=explode(".",$ip_addr);
+	    //now we need to check each part can range from 0-255
+	    foreach($parts as $ip_parts)
+	    {
+	      if(intval($ip_parts)>255 || intval($ip_parts)<0)
+	      return false; //if number is not within range of 0-255
+	    }
+	    return true;
+	  }
+	  else
+	    return false; //if format of ip address doesn't matches
+	}
+	public function macaddress_validation($val) 
+	{ 
+		return (bool)preg_match('/^([0-9a-fA-F][0-9a-fA-F]:){5}([0-9a-fA-F][0-9a-fA-F])$/',	$val); 
+	} 
+	public function encerrarContrato(AcessoClienteVO $aC)
+	{
+		//PROCURAR SERVIDOR;
+		$queryServidor = "SELECT * FROM servidores WHERE ID = '$aC->ID_SERVIDOR'";
+		$resultServidor = mysql_query($queryServidor);
+		$nRow = mysql_num_rows($resultServidor);
+		if($nRow == 0){return 'SERVIDOR NAUM ENCONTRADO';}
+		$rowServidor = mysql_fetch_assoc($resultServidor);
+		
+		$ip = $rowServidor['ENDERECO_IP'];
+		$usuario = $rowServidor['USUARIO'];
+		$senha = $rowServidor['SENHA'];
+		$porta = $rowServidor['PORTA_API'];
+		
+		//VARIAVEIS ESTANCIADAS API
+		$API = new routeros_api();
+		$API->port = $porta;					
+		$API->debug = true;
+				
+
+		
+		//-----VERIFICAR TIPO DE AUTENTICA��O E CONTROLE DE BANDA PARA INTERFACE ESCOLHIDA
+		$queryAutenBandaInterface = "SELECT * FROM interface WHERE ID = '$aC->ID_INTERFACE'";
+		$resultAutenBandaInterface = mysql_query($queryAutenBandaInterface);
+		$nRowAutenBandaInterface = mysql_num_rows($resultAutenBandaInterface);
+		if($nRowAutenBandaInterface == 0){return 'INTERFACE NAUM ENCONTRADA';}
+		
+		$rowAutenBandaInterface = mysql_fetch_assoc($resultAutenBandaInterface);
+		
+		//DEFINE TIPO DE AUTENTICACAO
+		if($rowAutenBandaInterface['HOSTPOT'] == 1)
+		{
+			$tipoAutenBanda = 1;
+		}
+		if($rowAutenBandaInterface['PPOE'] == 1)
+		{
+			$tipoAutenBanda = 2;
+		}
+		if($rowAutenBandaInterface['SIMPLES_QUEUE'] == 1)
+		{
+			$tipoAutenBanda = 3;
+		}
+		if($rowAutenBandaInterface['HOTSPOT_RADIUS'] == 1)
+		{
+			$tipoAutenBanda = 4;
+		}
+		
+		if ($API->connect($ip, $usuario, $senha)) {	
+			
+			
+				
+			
+			
+			//SOMENTE HOTSPOT
+			if($tipoAutenBanda == 1)
+			{					
+			  //DESABILITAR USUARIO NO HOTSPOT;
+			  $API->write('/ip/hotspot/user/print',false);
+			  $API->write('?name=' . $aC->LOGIN);
+			  $userArray = $API->read();
+			  $userID = $userArray[0]['.id'];
+			  //$comment = $userArray[0]['comment'];
+			  
+			  $API->write('/ip/hotspot/user/disable',false);
+			  $API->write('=numbers=' . $userID);
+			 // $API->write('=comment=' . $comment. ' ENCERRADO');
+			  $API->read();		 
+			  						 
+			}
+			
+			//FREERADIUS + HOTSPOT
+			if($tipoAutenBanda == 4)
+			{					
+				//APAGA CREDENCIAS DE ACESSO DO RADIUS
+			 	$queryApagarRadCheck = "DELETE FROM radcheck WHERE username='$aC->LOGIN'";
+			 	$resultApagarRadCheck = mysql_query($queryApagarRadCheck);
+
+			 	//APAGA REFERENCIA DE PLANO PRA USUARIO DO RADIUS
+			 	$queryApagarRadUserGroup = "DELETE FROM radusergroup WHERE username='$aC->LOGIN'";
+			 	$resultApagarRadUserGroup = mysql_query($queryApagarRadUserGroup);
+			}
+			 
+			
+				  //PROCURA INTERFACE
+				  $API->write('/ip/address/print',false);
+				  $API->write('?comment=' . $aC->NOME_RAZAO);
+				  $userArray = $API->read();
+				  $userID = $userArray[0]['.id'];
+				 				  
+				  	//DESABILITA INTERFACE
+				  $API->write('/ip/address/disable',false);
+				  $API->write('=numbers=' . $userID);				
+				  $API->read();	
+			
+			$API->disconnect();		
+		}
+		
+		//MUDAR STATUS PARA ENCERRADO NO MYSQL
+		$queryContratosAcessoClientes = "UPDATE acesso_cliente SET STATUS_2='ENCERRADO' WHERE ID='$aC->ID'";
+		$resultContratosAcessoClientes = mysql_query($queryContratosAcessoClientes);
+		
+	}
+	
+	public function ativarContratoAcesso(AcessoClienteVO $aC)
+	{
+				
+		//PROCURAR SERVIDOR PADR�O DA EMPRESA ATUAL;
+		$queryServidor = "SELECT * FROM servidores WHERE DEFAULT_2=1";
+		$resultServidor = mysql_query($queryServidor);
+		$nRow = mysql_num_rows($resultServidor);
+		if($nRow == 0){return 'SERVIDOR NAUM ENCONTRADO';}
+		$rowServidor = mysql_fetch_assoc($resultServidor);
+		
+		$ip = $rowServidor['ENDERECO_IP'];
+		$usuario = $rowServidor['USUARIO'];
+		$senha = $rowServidor['SENHA'];
+		$porta = $rowServidor['PORTA_API'];
+		
+		
+		
+		//VARIAVEIS ESTANCIADAS API
+		$API = new routeros_api();
+		$API->port = $porta;					
+		$API->debug = true;
+				
+
+		//MUDAR STATUS PARA ENCERRADO NO MYSQL
+		$queryContratosAcessoClientes = "UPDATE acesso_cliente SET INTERFACE_ID='$aC->ID_INTERFACE', PLANOS_ACESSO_ID='$aC->ID_PLANO_ACESSO', 
+		CONTRATOS_ACESSO_ID='$aC->ID_CONTRATO', LOGIN='$aC->LOGIN', 
+		SENHA='$aC->SENHA', ENDERECO_IP='$aC->ENDERECO_IP', ENDERECO_MAC='$aC->ENDERECO_MAC', STATUS_2='ATIVO' WHERE ID='$aC->ID'";
+		if(!$resultContratosAcessoClientes = mysql_query($queryContratosAcessoClientes))
+		{
+			return mysql_error();
+		}	
+		
+		//-----PEGA VIGENCIA DO CONTRATO
+		$queryVigenciaContrato = "SELECT * FROM contratos_acesso WHERE ID = '$aC->ID_CONTRATO'";
+		$resultVigenciaContrato = mysql_query($queryVigenciaContrato);
+		$nRowVigenciaContrato = mysql_num_rows($resultVigenciaContrato);
+		if($nRowVigenciaContrato == 0){return 'NENHUM CONTRATO FOI ENCONTRADO';}
+		$rowVigenciaContrato = mysql_fetch_assoc($resultVigenciaContrato);
+		$vigenciaContrato = $rowVigenciaContrato['VIGENCIA'];
+		$valorAdesao = $rowVigenciaContrato['VALOR_ADESAO'];
+		$valorInstalacao = $rowVigenciaContrato['VALOR_INSTALACAO'];
+		
+				$quantidade = $vigenciaContrato;
+   				$_prazo = 0;   
+    		  
+				
+				for($i=0;$i < $quantidade;$i++)
+   				{
+		
+					$sequencia = $i;
+					if($i ==0){
+						$sequencia++;
+					}else if($i == $sequencia){
+						$sequencia++;
+					}
+					
+					$sequencia2 = str_pad($sequencia, 2, "0", STR_PAD_LEFT);
+					$ano = date('y');
+
+					
+					$queryUltimoBoleto = "SELECT * FROM contas_receber WHERE CLIENTES_ID = '$aC->CLIENTES_ID' ORDER by ID DESC";
+					$resultUltimoBoleto = mysql_query($queryUltimoBoleto);
+					$rowUltimoBoleto = mysql_fetch_assoc($resultUltimoBoleto);			
+			    	$nRowUltimoBoleto = mysql_num_rows($resultUltimoBoleto);
+			    	if($nRowUltimoBoleto == 0)
+			    	{
+			    		$ultimoNumero = str_pad("1", 6, "0", STR_PAD_LEFT);
+			    	}else
+			    	{
+			    		$ultimoValor = ltrim(substr($rowUltimoBoleto['N_NUMERO'], -6)+1, "0");
+			    		
+			    		$ultimoNumero = str_pad($ultimoValor, 6, "0", STR_PAD_LEFT);
+			    		
+			    	}
+			    	
+           			$NumeroNovo = $aC->CLIENTES_ID.$ultimoNumero;
+					
+					
+					//$dataPrimeiroBoleto = "10/01/2011";
+					$_dia = substr($aC->DATA_BOLETO, 0, 2);
+   					$_mes = substr($aC->DATA_BOLETO, 3, 2);
+   					$_ano  = substr($aC->DATA_BOLETO, 6, 4);
+			
+	   				$_ts = mktime(0,0,0,$_mes+$_prazo,$_dia,$_ano);
+       				$_data = date('Y-m-d',$_ts);
+	   				
+	   				
+	  				
+					$emissao = date('Y-m-d');
+					
+					
+					
+					$ndocumento = $aC->CLIENTES_ID.'/'.$ano.'/'.$sequencia2; 
+					
+					
+					
+					//Inserindo
+					$sql = "INSERT INTO contas_receber (N_DOC,CLIENTES_ID,DATA_VENCIMENTO,VALOR_TITULO, STATUS_2, DATA_EMISSAO, N_NUMERO, 
+					CONTROLE, EMPRESA_ID) VALUES
+					('$ndocumento', '$aC->CLIENTES_ID', '$_data','$valorPlano', 'ABERTO', '$emissao','$NumeroNovo', '$ndocumento', '$aC->EMPRESA_ID')";
+					 
+					$resultadoSql = mysql_query($sql);
+        			
+        			//supondo que o vencimento � de 30 em 30 dias 
+					
+        			$_prazo += 1;
+        			
+    			
+    			}
+				        			
+    			//------GERAR BOLETO DE ADESAO CASO HOUVER
+    			if(strlen($valorAdesao) > 0)
+    			{
+    				$queryUltimoBoletoAdesao = "SELECT * FROM contas_receber WHERE CLIENTES_ID = '$aC->CLIENTES_ID' ORDER by ID DESC LIMIT 0,1";
+					$resultUltimoBoletoAdesao = mysql_query($queryUltimoBoletoAdesao);
+					$rowUltimoBoletoAdesao = mysql_fetch_assoc($resultUltimoBoletoAdesao);			
+			    	$nRowUltimoBoletoAdesao = mysql_num_rows($resultUltimoBoletoAdesao);
+			    	if($nRowUltimoBoletoAdesao == 0)
+			    	{
+			    		$ultimoNumeroAdesao = str_pad("1", 6, "0", STR_PAD_LEFT);
+			    	}else
+			    	{
+			    		$ultimoValorAdesao = ltrim(substr($rowUltimoBoletoAdesao['N_NUMERO'], -6)+1, "0");
+			    		
+			    		$ultimoNumeroAdesao = str_pad($ultimoValorAdesao, 6, "0", STR_PAD_LEFT);
+			    		
+			    	}
+			    	
+           		$NumeroNovoAdesao = $aC->CLIENTES_ID.$ultimoNumeroAdesao;
+           			
+    			$nDocAdesao  = $aC->CLIENTES_ID.'/ADESAO';
+    			$valorAdesao = $rowVigenciaContrato['VALOR_ADESAO'];
+    			$queryAdesao = "INSERT INTO contas_receber (N_DOC,CLIENTES_ID,DATA_VENCIMENTO,VALOR_TITULO, STATUS_2, DATA_EMISSAO, N_NUMERO, 
+					CONTROLE, EMPRESA_ID) VALUES
+					('$nDocAdesao', '$aC->CLIENTES_ID', '$aC->DATA_CADASTRO','$valorAdesao', 'ABERTO','$aC->DATA_CADASTRO','$NumeroNovoAdesao', '$nDocAdesao', '$aC->EMPRESA_ID')";
+					 
+				 $resultAdesao = mysql_query($queryAdesao);
+    			}
+		
+		
+		//-----VERIFICAR TIPO DE AUTENTICA��O E CONTROLE DE BANDA PARA INTERFACE ESCOLHIDA
+		$queryAutenBandaInterface = "SELECT * FROM interface WHERE ID = '$aC->ID_INTERFACE'";
+		$resultAutenBandaInterface = mysql_query($queryAutenBandaInterface);
+		$nRowAutenBandaInterface = mysql_num_rows($resultAutenBandaInterface);
+		if($nRowAutenBandaInterface == 0){return 'INTERFACE NAUM ENCONTRADA';}
+		
+		$rowAutenBandaInterface = mysql_fetch_assoc($resultAutenBandaInterface);
+		$codServidorRadius = $rowAutenBandaInterface['SERVIDOR_RADIUS_ID'];
+		
+		//DEFINE TIPO DE AUTENTICACAO
+		if($rowAutenBandaInterface['HOSTPOT'] == 1)
+		{
+			$tipoAutenBanda = 1;
+		}
+		if($rowAutenBandaInterface['PPOE'] == 1)
+		{
+			$tipoAutenBanda = 2;
+		}
+		if($rowAutenBandaInterface['SIMPLES_QUEUE'] == 1)
+		{
+			$tipoAutenBanda = 3;
+		}
+		if($rowAutenBandaInterface['HOTSPOT_RADIUS'] == 1)
+		{
+			$tipoAutenBanda = 4;
+		}
+		
+		if ($API->connect($ip, $usuario, $senha)) {	
+			
+		
+			
+			
+			//SOMENTE HOTSPOT
+			if($tipoAutenBanda == 1)
+			{					
+			  //HABILITA USUARIO NO HOTSPOT;
+			  $API->write('/ip/hotspot/user/print',false);
+			  $API->write('?name=' . $aC->LOGIN);
+			  $userArray = $API->read();
+			  $userID = $userArray[0]['.id'];
+			  //$comment = $userArray[0]['comment'];
+			  
+			  $API->write('/ip/hotspot/user/enable',false);
+			  $API->write('=numbers=' . $userID);
+			 // $API->write('=comment=' . $comment. ' ENCERRADO');
+			  $API->read();		 
+			  						 
+			}
+			
+			//FREERADIUS + HOTSPOT
+			if($tipoAutenBanda == 4)
+			{					
+				//BUSCAR SERVIDOR RADIUS ASSOCIADO;
+			   $queryServidorRadius = "SELECT * FROM servidores_radius WHERE ID=$codServidorRadius";
+			   $resultServidorRadius = mysql_query($queryServidorRadius);
+			   $nRowServidorRadius = mysql_num_rows($resultServidorRadius);
+			   if($nRowServidorRadius == 0){return 'ERRO: SERVIDOR RADIUS N�O ENCONTRADO';}
+			   $rowServidorRadius = mysql_fetch_assoc($resultServidorRadius);
+		   
+			   //DEFINE PARAMETROS DO SERVIDOR RADIUS
+			   $ipRadius = $rowServidorRadius['IP_FREERADIUS'];
+			   $userMysql = $rowServidorRadius['USERNAME_MYSQL'];
+			   $senhaMysql = $rowServidorRadius['PASSWORD_MYSQL'];
+			   $bancoMysql = $rowServidorRadius['BANCO_DADOS'];
+			   
+			   
+
+		   //CONECTA AO SERVIDOR MYSQL REMOTO DO RADIUS
+		   if($con = mysql_pconnect($ipRadius, $userMysql, $senhaMysql))
+		   {
+		   	
+			   	//CADASTRA USU�RIO,SENHA,IP E MAC NA TABELA MYSQL DO RADIUS			   	
+			   	$ipMK1 = substr($aC->ENDERECO_IP, 0, -1);
+				$ipMK2 = substr($aC->ENDERECO_IP , -1);
+				$ipMK3 = $ipMK2;
+			
+				$ip2 = $ipMK1.$ipMK3;
+			   	
+				$queryRadCheck = "INSERT INTO ".$bancoMysql.".radcheck(username,attribute,op,value)VALUES
+				('$aC->LOGIN', 'Password','==','$aC->SENHA'),
+				('$aC->LOGIN', 'Calling-Station-ID', '==' , '$aC->ENDERECO_MAC'),
+				('$aC->LOGIN', 'Framed-IP-Address' , '==' , '$ip2')";			
+				
+				if(!$resultRadCheck = mysql_query($queryRadCheck, $con))
+			   	{
+			   		return 'ERRO: '.mysql_error();
+			   	}	
+				
+				$nomePlanoRadius = $aC->ID_INTERFACE.'_'.$aC->NOME_PLANO_ACESSO;
+				
+				//CADASTRA USUARIO NO PLANO DO RADIUS
+				$queryRadUserGroup = "INSERT INTO ".$bancoMysql.".radusergroup(username,groupname,priority )VALUES
+				('$aC->LOGIN','$nomePlanoRadius','1')";				
+								
+				if(!$resultRadUserGroup = mysql_query($queryRadUserGroup, $con))
+			   	{
+			   		return 'ERRO: '.mysql_error();
+			   	}		
+		   
+			   	
+		   }else{
+		   		return 'ERRO: '.mysql_error();
+		   }
+		   		//FECHA CONEX�O REMOTA
+		   		mysql_close($con);
+			//-------CONECTA AO SERVIDOR MYSQL REMOTO DO RADIUS
+
+		   		
+			}//-------FREERADIUS+HOTSPOT---FIM
+			
+			 			
+				  //PROCURA INTERFACE
+				  $API->write('/ip/address/print',false);
+				  $API->write('?comment=' . $aC->NOME_RAZAO);
+				  $userArray = $API->read();
+				  $userID = $userArray[0]['.id'];
+				 				  
+				  	//DESABILITA INTERFACE
+				  $API->write('/ip/address/enable',false);
+				  $API->write('=numbers=' . $userID);				
+				  $API->read();	
+			
+			$API->disconnect();	
+
+			
+		}
+		
+			
+		
+		return 'ok';
+	}
+	
+	
+	
+	
+	public function selecionarCrendencialAcesso($cod)
+	{
+		
+		
+		$query = "SELECT acesso_cliente.ID,acesso_cliente.EMPRESA_ID, acesso_cliente.CLIENTES_ID, acesso_cliente.LOGIN, acesso_cliente.SENHA, 
+			acesso_cliente.ENDERECO_IP, acesso_cliente.ENDERECO_MAC,  
+			clientes.NOME_RAZAO,
+			interface.ID as ID_INTERFACE,interface.NOME as NOME_INTERFACE, 
+			planos_acesso.ID as ID_PLANO_ACESSO,planos_acesso.NOME as NOME_PLANO_ACESSO,
+			servidores.ID as ID_SERVIDOR, servidores.NOME_SERVER, 
+			bases.ID as ID_BASE, bases.NOME as NOME_BASE, 
+			material_acesso.ID as ID_MATERIAL,material_acesso.NOME as NOME_MATERIAL , 
+			contratos_acesso.ID as ID_CONTRATO, contratos_acesso.NOME as NOME_CONTRATO
+					FROM acesso_cliente
+			    LEFT JOIN clientes ON clientes.ID = acesso_cliente.CLIENTES_ID
+			    LEFT JOIN interface ON interface.ID = acesso_cliente.INTERFACE_ID 
+			    LEFT JOIN planos_acesso ON planos_acesso.ID = acesso_cliente.PLANOS_ACESSO_ID
+			    LEFT JOIN servidores ON servidores.ID = acesso_cliente.SERVIDORES_ID
+			    LEFT JOIN bases ON bases.ID = acesso_cliente.BASES_ID    
+			    LEFT JOIN material_acesso ON material_acesso.ID = acesso_cliente.MATERIAL_ACESSO_ID
+			    LEFT JOIN contratos_acesso ON contratos_acesso.ID = acesso_cliente.CONTRATOS_ACESSO_ID
+			    WHERE acesso_cliente.ID = '$cod'";
+		
+		
+		
+		
+		
+		$result = mysql_query($query);
+		$nrow = mysql_num_rows($result);
+		if($nrow == 0){return 'ERRO';}
+		
+		$row = mysql_fetch_assoc($result);
+			
+			$acessoCliente = new AcessoClienteVO();
+			
+			$acessoCliente->ID = $row['ID'];
+			$acessoCliente->EMPRESA_ID = $row['EMPRESA_ID'];
+			$acessoCliente->CLIENTES_ID = $row['CLIENTES_ID'];
+			$acessoCliente->LOGIN = $row['LOGIN'];
+			$acessoCliente->SENHA = $row['SENHA'];
+			$acessoCliente->ENDERECO_IP = $row['ENDERECO_IP'];
+			$acessoCliente->ENDERECO_MAC = $row['ENDERECO_MAC'];
+			$acessoCliente->NOME_RAZAO = $row['NOME_RAZAO'];
+			$acessoCliente->ID_INTERFACE = $row['ID_INTERFACE'];
+			$acessoCliente->NOME_INTERFACE = $row['NOME_INTERFACE'];
+			$acessoCliente->ID_PLANO_ACESSO = $row['ID_PLANO_ACESSO'];
+			$acessoCliente->NOME_PLANO_ACESSO = $row['NOME_PLANO_ACESSO'];
+			$acessoCliente->ID_SERVIDOR = $row['ID_SERVIDOR'];
+			$acessoCliente->NOME_SERVER = $row['NOME_SERVER'];
+			$acessoCliente->ID_BASE = $row['ID_BASE'];
+			$acessoCliente->NOME_BASE = $row['NOME_BASE'];
+			$acessoCliente->ID_MATERIAL = $row['ID_MATERIAL'];
+			$acessoCliente->NOME_MATERIAL = $row['NOME_MATERIAL'];
+			$acessoCliente->ID_CONTRATO = $row['ID_CONTRATO'];
+			$acessoCliente->NOME_CONTRATO = $row['NOME_CONTRATO'];
+		
+		
+		return $acessoCliente;
+		
+	}	
+	public function mudarTitulariaContrato($idNovoTitular, $idContrato)
+	{
+		
+		
+		//MUDA COMENTARIO DE INTERFACE NO MIKROTIK
+		$queryInfoContrato = "SELECT acesso_cliente.ID,acesso_cliente.EMPRESA_ID, acesso_cliente.CLIENTES_ID, acesso_cliente.LOGIN, acesso_cliente.SENHA, 
+			acesso_cliente.ENDERECO_IP, acesso_cliente.ENDERECO_MAC,  acesso_cliente.DATA_VENC_CONTRATO, acesso_cliente.DATA_CADASTRO, 
+			acesso_cliente.STATUS_2,
+			clientes.NOME_RAZAO,
+			interface.ID as ID_INTERFACE,interface.NOME as NOME_INTERFACE, 
+			planos_acesso.ID as ID_PLANO_ACESSO,planos_acesso.NOME as NOME_PLANO_ACESSO,
+			servidores.ID as ID_SERVIDOR, servidores.NOME_SERVER, 
+			bases.ID as ID_BASE, bases.NOME as NOME_BASE, 
+			material_acesso.ID as ID_MATERIAL,material_acesso.NOME as NOME_MATERIAL , 
+			contratos_acesso.ID as ID_CONTRATO, contratos_acesso.NOME as NOME_CONTRATO
+					FROM acesso_cliente
+			    LEFT JOIN clientes ON clientes.ID = acesso_cliente.CLIENTES_ID
+			    LEFT JOIN interface ON interface.ID = acesso_cliente.INTERFACE_ID 
+			    LEFT JOIN planos_acesso ON planos_acesso.ID = acesso_cliente.PLANOS_ACESSO_ID
+			    LEFT JOIN servidores ON servidores.ID = acesso_cliente.SERVIDORES_ID
+			    LEFT JOIN bases ON bases.ID = acesso_cliente.BASES_ID    
+			    LEFT JOIN material_acesso ON material_acesso.ID = acesso_cliente.MATERIAL_ACESSO_ID
+			    LEFT JOIN contratos_acesso ON contratos_acesso.ID = acesso_cliente.CONTRATOS_ACESSO_ID
+			    WHERE acesso_cliente.ID = '$idContrato'";
+		$resultInfoContrato = mysql_query($queryInfoContrato);
+		$nRowInfoContrato = mysql_num_rows($resultInfoContrato);
+		if($nRowInfoContrato >0)
+		{
+			$rowInforContrato = mysql_fetch_assoc($resultInfoContrato);
+			
+			$acessoCliente = new AcessoClienteVO();
+			
+			$dataHoje = date('Y-m-d');
+			$dataAtual = explode('-', $dataHoje);
+			$dataVencimento = explode('-', $row['DATA_VENC_CONTRATO']);
+			
+			$dataAtual = mktime(0,0,0,$dataAtual[1],$dataAtual[2],$dataAtual[0]);
+			$dataBoleto = mktime(0,0,0,$dataVencimento[1],$dataVencimento[2],$dataVencimento[0]);  
+			$d3 = ($dataBoleto-$dataAtual);
+			$dias = round(($d3/60/60/24));
+			
+			$acessoCliente->ID = $rowInforContrato['ID'];
+			$acessoCliente->EMPRESA_ID = $rowInforContrato['EMPRESA_ID'];
+			$acessoCliente->CLIENTES_ID = $rowInforContrato['CLIENTES_ID'];
+			$acessoCliente->LOGIN = $rowInforContrato['LOGIN'];
+			$acessoCliente->SENHA = $rowInforContrato['SENHA'];
+			$acessoCliente->ENDERECO_IP = $rowInforContrato['ENDERECO_IP'];
+			$acessoCliente->ENDERECO_MAC = $rowInforContrato['ENDERECO_MAC'];
+			$acessoCliente->NOME_RAZAO = $rowInforContrato['NOME_RAZAO'];
+			$acessoCliente->ID_INTERFACE = $rowInforContrato['ID_INTERFACE'];
+			$acessoCliente->NOME_INTERFACE = $rowInforContrato['NOME_INTERFACE'];
+			$acessoCliente->ID_PLANO_ACESSO = $rowInforContrato['ID_PLANO_ACESSO'];
+			$acessoCliente->NOME_PLANO_ACESSO = $rowInforContrato['NOME_PLANO_ACESSO'];
+			$acessoCliente->ID_SERVIDOR = $rowInforContrato['ID_SERVIDOR'];
+			$acessoCliente->NOME_SERVER = $rowInforContrato['NOME_SERVER'];
+			$acessoCliente->ID_BASE = $rowInforContrato['ID_BASE'];
+			$acessoCliente->NOME_BASE = $rowInforContrato['NOME_BASE'];
+			$acessoCliente->ID_MATERIAL = $rowInforContrato['ID_MATERIAL'];
+			$acessoCliente->NOME_MATERIAL = $rowInforContrato['NOME_MATERIAL'];
+			$acessoCliente->ID_CONTRATO = $rowInforContrato['ID_CONTRATO'];
+			$acessoCliente->NOME_CONTRATO = $rowInforContrato['NOME_CONTRATO'];
+			$acessoCliente->DATA_VENC_CONTRATO = $rowInforContrato['DATA_VENC_CONTRATO'];
+			$acessoCliente->DATA_CADASTRO = $rowInforContrato['DATA_CADASTRO'];
+			$acessoCliente->DIAS_CONTRATO = $dias;
+			
+			//PEGA DADOS SERVIDOR 
+			$queryBuscarServidor = "SELECT * FROM servidores WHERE ID = '$acessoCliente->ID_SERVIDOR'";
+			$resultBuscarServidor = mysql_query($queryBuscarServidor);
+			$nRowBuscarServidor = mysql_num_rows($resultBuscarServidor);
+			if($nRowBuscarServidor >0)
+			{
+				$rowBuscarServidor = mysql_fetch_assoc($resultBuscarServidor);
+				
+				$servidor = new ServidoresVO();
+				$servidor->ID = $rowBuscarServidor['ID'];
+				$servidor->EMPRESA_ID = $rowBuscarServidor['EMPRESA_ID'];
+				$servidor->NOME_SERVER = $rowBuscarServidor['NOME_SERVER'];
+				$servidor->ENDERECO_IP = $rowBuscarServidor['ENDERECO_IP'];
+				$servidor->USUARIO = $rowBuscarServidor['USUARIO'];
+				$servidor->SENHA = $rowBuscarServidor['SENHA'];
+				$servidor->PORTA_API = $rowBuscarServidor['PORTA_API'];
+				$servidor->DEFAULT_2 = $rowBuscarServidor['DEFAULT_2'];
+				
+					//VARIAVEIS ESTANCIADAS API
+					$API = new routeros_api();
+					$API->port = $servidor->PORTA_API;					
+					$API->debug = true;
+					
+					//PEGAR CONFIGURACOES DA INTERFACE
+					$querAutenBandaInterface = "SELECT * FROM interface WHERE ID = '$acessoCliente->ID_INTERFACE'";
+					$resultAutenBandaInterface = mysql_query($querAutenBandaInterface);
+					$nRowAutenBandaInterface = mysql_num_rows($resultAutenBandaInterface);
+					if($nRowAutenBandaInterface >0){
+						$rowAutenBandaInterface = mysql_fetch_assoc($resultAutenBandaInterface);
+					}else {
+						return 'INTERFACE N ENCONTRADA';
+					}
+					
+					//DEFINE TIPO DE AUTENTICACAO
+					if($rowAutenBandaInterface['HOSTPOT'] == 1)
+					{
+						$tipoAutenBanda = 1;
+					}
+					if($rowAutenBandaInterface['PPOE'] == 1)
+					{
+						$tipoAutenBanda = 2;
+					}
+					if($rowAutenBandaInterface['SIMPLES_QUEUE'] == 1)
+					{
+						$tipoAutenBanda = 3;
+					}
+					if($rowAutenBandaInterface['HOTSPOT_RADIUS'] == 1)
+					{
+						$tipoAutenBanda = 4;
+					}
+		
+		
+			
+							
+			  	
+				
+				if ($API->connect($servidor->ENDERECO_IP, $servidor->USUARIO, $servidor->SENHA)) {
+
+					//BUSCA NOME DO NOVO TITULAR
+					$queryNomeRazao = "SELECT * FROM clientes WHERE ID = '$idNovoTitular'";
+					$resultNomeRazao = mysql_query($queryNomeRazao);
+					$rowNomeRazao = mysql_fetch_assoc($resultNomeRazao);
+					
+					
+					//PROCURA INTERFACE
+				    $API->write('/ip/address/print',false);
+				    $API->write("?comment=".$acessoCliente->NOME_RAZAO);
+				    $userArray = $API->read();
+				    $userID = $userArray[0]['.id'];
+				    
+				  	//MUDA COMENTARIO DA INTERFACE DO CLIENTE
+				    $API->write('/ip/address/set',false);
+				    $API->write("=comment=".$rowNomeRazao['NOME_RAZAO'],false);
+				    $API->write('=numbers='.$userID);				
+				    $API->read();	
+				    
+				   // ip address set comment=MARCOS numbers=*9
+				    
+					
+					//CASO SEJA HOTSPOT
+				     if($tipoAutenBanda == 1)
+					{
+						//PROCURA POR USUARIO NO HOTSPOT
+					  $API->write('/ip/hotspot/user/print',false);
+					  $API->write('?comment=' . $aC->NOME_RAZAO);
+					  $userArray = $API->read();
+					  $userID = $userArray[0]['.id'];
+					 				  
+					  	//MUDA COMENTARIO DA INTERFACE DO CLIENTE
+					  $API->write('/ip/hotspot/user/set',false);
+					  $API->write('=comment=' . $rowNomeRazao['NOME_RAZAO']);
+					  $API->write('=numbers=' . $userID);				
+					  $API->read();	
+					}
+					
+
+					 $API->disconnect(); 
+					 
+				}else
+				{
+					return 'N FOI POSSIVEL CONECTAR AO SERVER';
+				}	
+
+				//MUDA CADASTRO ACESSO_CLIENTE
+				$query = "UPDATE acesso_cliente SET CLIENTES_ID='$idNovoTitular' WHERE ID='$idContrato'";
+				$result = mysql_query($query);
+			
+			}else{
+				return 'SERVIDOR N ENCONTRADO';
+			}
+			}else {
+				return 'CONTRATO N ENCONTRADO';
+			} 		
+		
+		
+		
+		
+	}
+	public function TrocarPlanoAcesso($idInterface, $idPlano, $idContrato,$idServidor, $login, $idCliente)
+	{
+		//--------TROCAR PLANO NA BASE MYSQL
+		$query = "UPDATE acesso_cliente SET INTERFACE_ID='$idInterface', PLANOS_ACESSO_ID='$idPlano' WHERE ID='$idContrato'";
+		$result = mysql_query($query);
+		
+		//-----PEGAR NOME DO PLANO
+		$queryNovoPlano = "SELECT * FROM planos_acesso WHERE ID = '$idPlano'";
+		$resultNovoPlano = mysql_query($queryNovoPlano);
+		$nRowNovoPlano = mysql_num_rows($resultNovoPlano);
+		if($nRowNovoPlano == 0){return 'NENHUM PLANO ENCONTRADO';}
+		$rowNovoPlano = mysql_fetch_assoc($resultNovoPlano);
+		
+		
+		$N_DOC = $idCliente."/".date('y');
+		$VALOR_TITULO = $rowNovoPlano['VALOR'];
+		//-----ALTERAR VALOR DE TITULOS
+		$queryAlterarTitulos = "UPDATE contas_receber SET VALOR_TITULO='$VALOR_TITULO'
+		WHERE CLIENTES_ID = '$idCliente' AND STATUS_2 = 'ABERTO' AND N_DOC LIKE  '%$N_DOC%'";
+		$resultAlterarTitulos = mysql_query($queryAlterarTitulos);
+		
+		
+		//---------ALTERAR NO SERVIDOR;
+		$queryServidor = "SELECT * FROM servidores WHERE ID = '$idServidor'";
+		$resultServidor = mysql_query($queryServidor);
+		$nRow = mysql_num_rows($resultServidor);
+		if($nRow == 0){return 'SERVIDOR NAUM ENCONTRADO';}
+		$rowServidor = mysql_fetch_assoc($resultServidor);
+		
+		$ip = $rowServidor['ENDERECO_IP'];
+		$usuario = $rowServidor['USUARIO'];
+		$senha = $rowServidor['SENHA'];
+		$porta = $rowServidor['PORTA_API'];
+		
+		//VARIAVEIS ESTANCIADAS API
+		$API = new routeros_api();
+		$API->port = $porta;					
+		$API->debug = true;	
+		
+		
+		//-----VERIFICAR TIPO DE AUTENTICA��O E CONTROLE DE BANDA PARA INTERFACE ESCOLHIDA
+		$queryAutenBandaInterface = "SELECT * FROM interface WHERE ID = '$idInterface'";
+		$resultAutenBandaInterface = mysql_query($queryAutenBandaInterface);
+		$nRowAutenBandaInterface = mysql_num_rows($resultAutenBandaInterface);
+		if($nRowAutenBandaInterface == 0){return 'INTERFACE NAUM ENCONTRADA';}
+		
+		$rowAutenBandaInterface = mysql_fetch_assoc($resultAutenBandaInterface);
+		
+		//DEFINE TIPO DE AUTENTICACAO
+		if($rowAutenBandaInterface['HOSTPOT'] == 1)
+		{
+			$tipoAutenBanda = 1;
+		}
+		if($rowAutenBandaInterface['PPOE'] == 1)
+		{
+			$tipoAutenBanda = 2;
+		}
+		if($rowAutenBandaInterface['SIMPLES_QUEUE'] == 1)
+		{
+			$tipoAutenBanda = 3;
+		}
+		if($rowAutenBandaInterface['HOTSPOT_RADIUS'] == 1)
+		{
+			$tipoAutenBanda = 4;
+		}
+		
+			if ($API->connect($ip, $usuario, $senha)) {					
+		
+				if($tipoAutenBanda == 1)
+				{				
+					  //PROCURA USUARIO NO HOTSPOT;
+					  $API->write('/ip/hotspot/user/print',false);
+					  $API->write('?name=' . $login);
+					  $userArray = $API->read();
+					  $userID = $userArray[0]['.id'];
+					  //$comment = $userArray[0]['comment'];
+					  
+					  //ALTERA PLANO
+					  $API->write('/ip/hotspot/user/set',false);
+					  $API->write('=profile=' . $rowNovoPlano['NOME'], false);
+					  $API->write('=numbers=' . $userID);
+					 
+					  $API->read();		  						 
+				}	
+				if($tipoAutenBanda == 4)
+				{
+					$nomePlanoRadius = $rowAutenBandaInterface['ID'].'_'.$rowNovoPlano['NOME'];
+					//ALTERAR PLANO NA TABELA RADIUS
+					$queryRadUserGroup = "UPDATE radusergroup SET groupname = '$nomePlanoRadius' WHERE username = '$login'";
+					$resultRadUserGroup = mysql_query($queryRadUserGroup);
+				}
+				
+			  $API->disconnect();
+		}
+		return 'ok';
+	}
+	public function renovarPlanoAcesso($idInterface, $idPlano, $idContrato, $idCliente, $datBoleto)
+	{
+		//return $idCliente;
+		//BUSCA BOLETOS ABERTOS;
+		$queryBoletosAbertos = "SELECT * FROM contas_receber WHERE CLIENTES_ID = '$idCliente' AND STATUS_2 = 'ABERTO'";
+		$resultBoletosAbertos = mysql_query($queryBoletosAbertos);
+		$nRowBoletosAbertos = mysql_num_rows($resultBoletosAbertos);
+		//if($nRowBoletosAbertos > 0){return 'EXISTEM BOLETOS EM ABERTO';}
+		
+		//return 'TESTE';
+		
+		//LISTAR ACESSO CLIENTE
+		$queryAcessoCliente = "SELECT * FROM acesso_cliente WHERE CLIENTES_ID = '$idCliente'";
+		$resultAcessoCliente = mysql_query($queryAcessoCliente);
+		$nRowAcessoCliente = mysql_num_rows($resultAcessoCliente);
+		if($nRowAcessoCliente == 0){return 'CONTRATO NAUM FOI ENCONTRADO';}
+		
+		$rowAcessoCliente = mysql_fetch_assoc($resultAcessoCliente);
+			
+			$aC = new AcessoClienteVO();
+			$aC->ID = $rowAcessoCliente['ID'];
+			$aC->EMPRESA_ID = $rowAcessoCliente['EMPRESA_ID'];
+			$aC->CLIENTES_ID = $rowAcessoCliente['CLIENTES_ID'];
+			$aC->LOGIN = $rowAcessoCliente['LOGIN'];
+			$aC->SENHA = $rowAcessoCliente['SENHA'];
+			$aC->ENDERECO_IP = $rowAcessoCliente['ENDERECO_IP'];
+			$aC->ENDERECO_MAC = $rowAcessoCliente['ENDERECO_MAC'];
+			$aC->NOME_RAZAO = $rowAcessoCliente['NOME_RAZAO'];
+			$aC->ID_INTERFACE = $rowAcessoCliente['ID_INTERFACE'];
+			$aC->NOME_INTERFACE = $rowAcessoCliente['NOME_INTERFACE'];
+			$aC->ID_PLANO_ACESSO = $rowAcessoCliente['ID_PLANO_ACESSO'];
+			$aC->NOME_PLANO_ACESSO = $rowAcessoCliente['NOME_PLANO_ACESSO'];
+			$aC->ID_SERVIDOR = $rowAcessoCliente['ID_SERVIDOR'];
+			$aC->NOME_SERVER = $rowAcessoCliente['NOME_SERVER'];
+			$aC->ID_BASE = $rowAcessoCliente['ID_BASE'];
+			$aC->NOME_BASE = $rowAcessoCliente['NOME_BASE'];
+			$aC->ID_MATERIAL = $rowAcessoCliente['ID_MATERIAL'];
+			$aC->NOME_MATERIAL = $rowAcessoCliente['NOME_MATERIAL'];
+			$aC->ID_CONTRATO = $rowAcessoCliente['ID_CONTRATO'];
+			$aC->NOME_CONTRATO = $rowAcessoCliente['NOME_CONTRATO'];
+			$aC->DATA_VENC_CONTRATO = $rowAcessoCliente['DATA_VENC_CONTRATO'];
+			$aC->DATA_CADASTRO = $rowAcessoCliente['DATA_CADASTRO'];
+			//$aC->DIAS_CONTRATO = $dias;
+		
+		//PROCESSO DE RENOVA��O
+
+		//$aC->DATA_VENC_CONTRATO = date('Y-m-d');
+
+		//-----PEGA VIGENCIA DO CONTRATO
+		$queryVigenciaContrato = "SELECT * FROM contratos_acesso WHERE ID = '$idContrato'";
+		$resultVigenciaContrato = mysql_query($queryVigenciaContrato);
+		$nRowVigenciaContrato = mysql_num_rows($resultVigenciaContrato);
+		if($nRowVigenciaContrato == 0){return 'NENHUM CONTRATO FOI ENCONTRADO';}
+		$rowVigenciaContrato = mysql_fetch_assoc($resultVigenciaContrato);
+		$vigenciaContrato = $rowVigenciaContrato['VIGENCIA'];
+		$valorAdesao = $rowVigenciaContrato['VALOR_ADESAO'];
+		$valorInstalacao = $rowVigenciaContrato['VALOR_INSTALACAO'];
+		$nomeContrato = $rowVigenciaContrato['NOME'];
+		
+		//DEFINIR DATA DE TERMINO DE CONTRATO		
+
+			$data = date('Y-m-d');
+			$data = explode("-", $data);
+    		$newData = date('Y-m-d', mktime(0, 0, 0, $data[1]+$vigenciaContrato, $data[2], $data[0]));
+    		
+    		$aC->DATA_VENC_CONTRATO = $newData;
+		
+			
+		
+		//-----PEGA NO DO PLANO DE ACESSO
+		$query22 = "SELECT * FROM planos_acesso WHERE ID=$idPlano";
+		if(!$result22 = mysql_query($query22))
+		{
+			return 'RENOVACAO DE CONTRATO: NAO FOI POSSIVEL REALIZAR CONSULTA DE PLANO DE ACESSO '.mysql_error();
+		}
+		$nRow22 = mysql_num_rows($result22);
+		if($nRow22 == 0)
+		{
+			return 'RENOVACAO DE CONTRATO: NAO FOI POSSIVEL ENCONTRAR PLANO DE ACESSO, RENOVACAO CANCELADA ';
+		}
+		$row22 = mysql_fetch_assoc($result22);
+		$nomePlano = $row22['NOME'];
+		
+		//-----ALTERA ACESSO_CLIENTE
+		$query = "UPDATE acesso_cliente SET INTERFACE_ID='$idInterface', PLANOS_ACESSO_ID='$idPlano', CONTRATOS_ACESSO_ID='$idContrato', 
+		DATA_VENC_CONTRATO='$aC->DATA_VENC_CONTRATO' WHERE ID='$aC->ID'";
+		$result = mysql_query($query);
+ 			
+		//-----VERIFICAR TIPO DE AUTENTICA��O E CONTROLE DE BANDA PARA INTERFACE ESCOLHIDA
+		$queryAutenBandaInterface = "SELECT * FROM interface WHERE ID = '$idInterface'";
+		$resultAutenBandaInterface = mysql_query($queryAutenBandaInterface);
+		$nRowAutenBandaInterface = mysql_num_rows($resultAutenBandaInterface);
+		if($nRowAutenBandaInterface == 0){return 'INTERFACE NAUM ENCONTRADA';}
+		
+		$rowAutenBandaInterface = mysql_fetch_assoc($resultAutenBandaInterface);
+		
+		//DEFINE TIPO DE AUTENTICACAO
+		if($rowAutenBandaInterface['HOSTPOT'] == 1)
+		{
+			$tipoAutenBanda = 1;
+		}
+		if($rowAutenBandaInterface['PPOE'] == 1)
+		{
+			$tipoAutenBanda = 2;
+		}
+		if($rowAutenBandaInterface['SIMPLES_QUEUE'] == 1)
+		{
+			$tipoAutenBanda = 3;
+		}
+		if($rowAutenBandaInterface['HOTSPOT_RADIUS'] == 1)
+		{
+			$tipoAutenBanda = 4;
+		}
+		
+		$idServidor = $rowAutenBandaInterface['SERVIDORES_ID'];
+		
+		//-----SERVIDOR DEFAULT
+		$queryServidorDefault = "SELECT * FROM servidores WHERE ID = '$idServidor'";
+		$resultServidorDefault = mysql_query($queryServidorDefault);
+		$nRowServidorDefault = mysql_num_rows($resultServidorDefault);
+		if($nRowServidorDefault == 0){return 'NENHUM SERVIDOR PADRAO FOI ENCONTRADO';}
+		
+		$rowServidorDefault = mysql_fetch_assoc($resultServidorDefault);
+		
+		$ip = $rowServidorDefault['ENDERECO_IP'];
+		$usuario = $rowServidorDefault['USUARIO'];
+		$senha = $rowServidorDefault['SENHA'];
+		$porta = $rowServidorDefault['PORTA_API'];
+		
+		$queryPegarValorPlano = "SELECT * FROM planos_acesso WHERE ID = '$idPlano'";
+		$resultPegarValorPlano = mysql_query($queryPegarValorPlano);
+		$nRowPegarValorPlano = mysql_num_rows($resultPegarValorPlano);
+		if($nRowPegarValorPlano == 0){return 'NENHUM PLANO FOI ENCONTRADO';}
+		$rowPegarValorPlano = mysql_fetch_assoc($resultPegarValorPlano);
+		$valorPlano = $rowPegarValorPlano['VALOR'];
+		$nomePlanoHotspot = $rowPegarValorPlano['NOME'];
+		
+		//VARIAVEIS ESTANCIADAS API
+		$API = new routeros_api();
+		$API->port = $porta;					
+		$API->debug = true;
+				
+
+		if ($API->connect($ip, $usuario, $senha)) {
+			
+			 //ADICIONAR IP INTERFACE PARA O CLIENTE;
+//			  $API->write('/ip/address/add',false);
+//			  $API->write('=address=' . $aC->ENDERECO_IP.'/30',false);
+//			  $API->write('=interface=' .  $aC->NOME_INTERFACE, false);
+//			  $API->write('=comment=' . $aC->NOME_RAZAO);
+//			  $API->read();
+		
+			  //CASO UTILIZE HOTSPOT
+			  $nomePlanoRadius = $idInterface.'_'.$nomePlano;
+			 
+			  
+			if($tipoAutenBanda == 1)
+			{	
+				//PROCURA USUARIO NO HOTSPOT;
+				$API->write('/ip/hotspot/user/print',false);
+				$API->write('?name=' . $aC->LOGIN);
+				$userArray = $API->read();
+				$userID = $userArray[0]['.id'];
+					  						
+						
+			 	//EDITAR USUARIO NO HOTSPOT
+			  	$API->write('/ip/hotspot/user/set',false);
+			  	$API->write('=profile=' . $nomePlanoHotspot,false);
+			  	$API->write('=numbers=' . $userID);
+			 	$API->read();
+
+			 	
+			 	
+			}		
+			
+			 //CASO UTILIZE RADIUS + HOTSPOT
+			if($tipoAutenBanda == 4)
+			{			
+				//CADASTRA USUARIO NO PLANO DO RADIUS
+				$queryRadUserGroup = "UPDATE radusergroup SET groupname='$nomePlanoRadius' WHERE username = '$aC->LOGIN'";			
+				$resultRadUserGroup = mysql_query($queryRadUserGroup);
+			}
+			
+			
+			
+			 $API->disconnect();
+		}
+		
+		
+		
+		
+		
+		
+		//------------GERAR TITULOS NO FINANCEIRO DA EMPRESA E CLIENTES
+	
+						
+							
+				$quantidade = $vigenciaContrato;
+   				$_prazo = 0;   
+    		  
+				
+				for($i=0;$i < $quantidade;$i++)
+   				{
+		
+					$sequencia = $i;
+					if($i ==0){
+						$sequencia++;
+					}else if($i == $sequencia){
+						$sequencia++;
+					}
+					
+					$sequencia2 = str_pad($sequencia, 2, "0", STR_PAD_LEFT);
+					$ano = date('y');
+
+					
+					$queryUltimoBoleto = "SELECT * FROM contas_receber WHERE CLIENTES_ID = '$idCliente' ORDER by ID DESC";
+					$resultUltimoBoleto = mysql_query($queryUltimoBoleto);
+					$rowUltimoBoleto = mysql_fetch_assoc($resultUltimoBoleto);			
+			    	$nRowUltimoBoleto = mysql_num_rows($resultUltimoBoleto);
+			    	if($nRowUltimoBoleto == 0)
+			    	{
+			    		$ultimoNumero = str_pad("1", 6, "0", STR_PAD_LEFT);
+			    	}else
+			    	{
+			    		$ultimoValor = ltrim(substr($rowUltimoBoleto['N_NUMERO'], -6)+1, "0");
+			    		
+			    		$ultimoNumero = str_pad($ultimoValor, 6, "0", STR_PAD_LEFT);
+			    		
+			    	}
+			    	
+           			$NumeroNovo = $idCliente.$ultimoNumero;
+					
+					
+					//$dataPrimeiroBoleto = "10/01/2011";
+					$_dia = substr($datBoleto, 0, 2);
+   					$_mes = substr($datBoleto, 3, 2);
+   					$_ano  = substr($datBoleto, 6, 4);
+			
+	   				$_ts = mktime(0,0,0,$_mes+$_prazo,$_dia,$_ano);
+       				$_data = date('Y-m-d',$_ts);
+	   				
+	   				
+	  				
+					$emissao = date('Y-m-d');
+					
+					
+					
+					$ndocumento = $idCliente.'/'.$ano.'/'.$sequencia2; 
+					
+					
+					
+					//Inserindo
+					$sql = "INSERT INTO contas_receber (N_DOC,CLIENTES_ID,DATA_VENCIMENTO,VALOR_TITULO, STATUS_2, DATA_EMISSAO, N_NUMERO, 
+					CONTROLE, EMPRESA_ID) VALUES
+					('$ndocumento', '$idCliente', '$_data','$valorPlano', 'ABERTO', '$emissao','$NumeroNovo', '$sequencia2', '$aC->EMPRESA_ID')";
+					 
+					$resultadoSql = mysql_query($sql);
+        			
+        			//supondo que o vencimento � de 30 em 30 dias 
+					
+        			$_prazo += 1;
+        			
+    			
+    			}
+			$dataHoje = date('Y-m-d');
+			$query0 = "UPDATE acesso_cliente SET DATA_RENOVACAO='$dataHoje' WHERE ID='$aC->ID'";
+			$result0 = mysql_query($query0);
+			
+			
+				return 'ok';
+
+    			$aC->DATA_CADASTRO = date('Y-m-d');
+    			//------GERAR BOLETO DE ADESAO CASO HOUVER
+//    			if(strlen($valorAdesao) > 0)
+//    			{
+//    				$queryUltimoBoletoAdesao = "SELECT * FROM contas_receber WHERE CLIENTES_ID = '$idCliente' ORDER by ID DESC LIMIT 0,1";
+//					$resultUltimoBoletoAdesao = mysql_query($queryUltimoBoletoAdesao);
+//					$rowUltimoBoletoAdesao = mysql_fetch_assoc($resultUltimoBoletoAdesao);			
+//			    	$nRowUltimoBoletoAdesao = mysql_num_rows($resultUltimoBoletoAdesao);
+//			    	if($nRowUltimoBoletoAdesao == 0)
+//			    	{
+//			    		$ultimoNumeroAdesao = str_pad("1", 6, "0", STR_PAD_LEFT);
+//			    	}else
+//			    	{
+//			    		$ultimoValorAdesao = ltrim(substr($rowUltimoBoletoAdesao['N_NUMERO'], -6)+1, "0");
+//			    		
+//			    		$ultimoNumeroAdesao = str_pad($ultimoValorAdesao, 6, "0", STR_PAD_LEFT);
+//			    		
+//			    	}
+//			    	
+//           		$NumeroNovoAdesao = $aC->CLIENTES_ID.$ultimoNumeroAdesao;
+//           			
+//    			$nDocAdesao  = $aC->CLIENTES_ID.'/ADESAO';
+//    			$valorAdesao = $rowVigenciaContrato['VALOR_ADESAO'];
+//    			$queryAdesao = "INSERT INTO contas_receber (N_DOC,CLIENTES_ID,DATA_VENCIMENTO,VALOR_TITULO, STATUS_2, DATA_EMISSAO, N_NUMERO, 
+//					CONTROLE, EMPRESA_ID) VALUES
+//					('$nDocAdesao', '$idCliente', '$aC->DATA_CADASTRO','$valorAdesao', 'ABERTO','$aC->DATA_CADASTRO','$NumeroNovoAdesao', '$nDocAdesao', '$aC->EMPRESA_ID')";
+//					 
+//				 $resultAdesao = mysql_query($queryAdesao);
+//    			}
+    			
+				//------GERAR BOLETO DE  INSTALACAO CASO HOUVER
+//    			if(strlen($valorAdesao) > 0)
+//    			{
+//    				$queryUltimoBoletoAdesao = "SELECT * FROM contas_receber WHERE CLIENTES_ID = '$idCliente' ORDER by ID DESC LIMIT 0,1";
+//					$resultUltimoBoletoAdesao = mysql_query($queryUltimoBoletoAdesao);
+//					$rowUltimoBoletoAdesao = mysql_fetch_assoc($resultUltimoBoletoAdesao);			
+//			    	$nRowUltimoBoletoAdesao = mysql_num_rows($resultUltimoBoletoAdesao);
+//			    	if($nRowUltimoBoletoAdesao == 0)
+//			    	{
+//			    		$ultimoNumeroAdesao = str_pad("1", 6, "0", STR_PAD_LEFT);
+//			    	}else
+//			    	{
+//			    		$ultimoValorAdesao = ltrim(substr($rowUltimoBoletoAdesao['N_NUMERO'], -6)+1, "0");
+//			    		
+//			    		$ultimoNumeroAdesao = str_pad($ultimoValorAdesao, 6, "0", STR_PAD_LEFT);
+//			    		
+//			    	}
+//			    	
+//           		$NumeroNovoAdesao = $idCliente.$ultimoNumeroAdesao;
+//           			
+//    			$nDocAdesao  = $idCliente.'/INSTALACAO';
+//    			$valorInstalacao = $rowVigenciaContrato['VALOR_INSTALACAO'];
+//    			$queryAdesao = "INSERT INTO contas_receber (N_DOC,CLIENTES_ID,DATA_VENCIMENTO,VALOR_TITULO, STATUS_2, DATA_EMISSAO, N_NUMERO, 
+//					CONTROLE, EMPRESA_ID) VALUES
+//					('$nDocAdesao', '$idCliente', '$aC->DATA_CADASTRO','$valorInstalacao', 'ABERTO','$aC->DATA_CADASTRO','$NumeroNovoAdesao', '$nDocAdesao', '$aC->EMPRESA_ID')";
+//					 
+//				 $resultAdesao = mysql_query($queryAdesao);
+//    			}
+
+			
+
+	}
+	
+	
+	public function buscarCredenciaisAcesso($valor, $codEmpresa)
+	{
+		$query = "SELECT acesso_cliente.ID,acesso_cliente.EMPRESA_ID, acesso_cliente.CLIENTES_ID, acesso_cliente.LOGIN, acesso_cliente.SENHA, 
+			acesso_cliente.ENDERECO_IP, acesso_cliente.ENDERECO_MAC,  acesso_cliente.DATA_VENC_CONTRATO, acesso_cliente.DATA_CADASTRO, 
+			acesso_cliente.STATUS_2,
+			clientes.NOME_RAZAO,
+			interface.ID as ID_INTERFACE,interface.NOME as NOME_INTERFACE, 
+			planos_acesso.ID as ID_PLANO_ACESSO,planos_acesso.NOME as NOME_PLANO_ACESSO,
+			servidores.ID as ID_SERVIDOR, servidores.NOME_SERVER, 
+			bases.ID as ID_BASE, bases.NOME as NOME_BASE, 
+			material_acesso.ID as ID_MATERIAL,material_acesso.NOME as NOME_MATERIAL , 
+			contratos_acesso.ID as ID_CONTRATO, contratos_acesso.NOME as NOME_CONTRATO
+					FROM acesso_cliente
+			    LEFT JOIN clientes ON clientes.ID = acesso_cliente.CLIENTES_ID
+			    LEFT JOIN interface ON interface.ID = acesso_cliente.INTERFACE_ID 
+			    LEFT JOIN planos_acesso ON planos_acesso.ID = acesso_cliente.PLANOS_ACESSO_ID
+			    LEFT JOIN servidores ON servidores.ID = acesso_cliente.SERVIDORES_ID
+			    LEFT JOIN bases ON bases.ID = acesso_cliente.BASES_ID    
+			    LEFT JOIN material_acesso ON material_acesso.ID = acesso_cliente.MATERIAL_ACESSO_ID
+			    LEFT JOIN contratos_acesso ON contratos_acesso.ID = acesso_cliente.CONTRATOS_ACESSO_ID
+			    WHERE acesso_cliente.EMPRESA_ID = '$codEmpresa' AND acesso_cliente.STATUS_2 LIKE 'ATIVO'
+			    AND clientes.NOME_RAZAO LIKE '%$valor%' ORDER by ID DESC";
+		
+		
+		
+		
+		
+		$result = mysql_query($query);
+		$nrow = mysql_num_rows($result);
+		if($nrow == 0){return 'ERRO';}
+		
+		while ($row = mysql_fetch_assoc($result)) {
+			
+			$acessoCliente = new AcessoClienteVO();
+			
+			$dataHoje = date('Y-m-d');
+			$dataAtual = explode('-', $dataHoje);
+			$dataVencimento = explode('-', $row['DATA_VENC_CONTRATO']);
+			
+			$d1 = mktime(0,0,0,$dataAtual[1],$dataAtual[2],$dataAtual[0]);
+			$d2 = mktime(0,0,0,$dataVencimento[1],$dataVencimento[2],$dataVencimento[0]);  
+			$d3 = ($d2-$d1);
+			$dias = ($d3/2592000);
+			$dias = explode('.', $dias);
+			$meses = $dias[0];
+			
+			$acessoCliente->ID = $row['ID'];
+			$acessoCliente->EMPRESA_ID = $row['EMPRESA_ID'];
+			$acessoCliente->CLIENTES_ID = $row['CLIENTES_ID'];
+			$acessoCliente->LOGIN = $row['LOGIN'];
+			$acessoCliente->SENHA = $row['SENHA'];
+			$acessoCliente->ENDERECO_IP = $row['ENDERECO_IP'];
+			$acessoCliente->ENDERECO_MAC = $row['ENDERECO_MAC'];
+			$acessoCliente->NOME_RAZAO = $row['NOME_RAZAO'];
+			$acessoCliente->ID_INTERFACE = $row['ID_INTERFACE'];
+			$acessoCliente->NOME_INTERFACE = $row['NOME_INTERFACE'];
+			$acessoCliente->ID_PLANO_ACESSO = $row['ID_PLANO_ACESSO'];
+			$acessoCliente->NOME_PLANO_ACESSO = $row['NOME_PLANO_ACESSO'];
+			$acessoCliente->ID_SERVIDOR = $row['ID_SERVIDOR'];
+			$acessoCliente->NOME_SERVER = $row['NOME_SERVER'];
+			$acessoCliente->ID_BASE = $row['ID_BASE'];
+			$acessoCliente->NOME_BASE = $row['NOME_BASE'];
+			$acessoCliente->ID_MATERIAL = $row['ID_MATERIAL'];
+			$acessoCliente->NOME_MATERIAL = $row['NOME_MATERIAL'];
+			$acessoCliente->ID_CONTRATO = $row['ID_CONTRATO'];
+			$acessoCliente->NOME_CONTRATO = $row['NOME_CONTRATO'];
+			$acessoCliente->DATA_VENC_CONTRATO = $row['DATA_VENC_CONTRATO'];
+			$acessoCliente->DATA_CADASTRO = $row['DATA_CADASTRO'];
+			$acessoCliente->DIAS_CONTRATO = $meses;
+			
+			$acessoClientes[] = $acessoCliente;
+			
+		}
+		
+		return $acessoClientes;
+	}
+	public function listarMacs()
+	{
+		$API = new routeros_api();
+		$API->port = 8728;					
+		$API->debug = true;
+		
+		if ($API->connect('201.65.162.56', 'rbdigital', 'mkcolorau')) 
+		{
+
+		 	$API->write('/interface/wireless/access-list/print',false);
+		 	$API->write('?interface=digitalmax.centro.2 (5.8GHz)');
+		 	
+		}
+	}
+	public function cadastrarPlanoAcesso(PlanosAcessoVO $planoAcesso)
+	{
+		//LSITA INTERFACES		
+		$queryInterface = "SELECT * FROM interface WHERE ID='$planoAcesso->INTERFACE_ID'";
+		$resultInterface = mysql_query($queryInterface);
+		$nRowInterface = mysql_num_rows($resultInterface);
+		if($nRowInterface == 0){return 'ERRO: INTERFACE N�O ENCONTRADA';}
+		$rowInterface = mysql_fetch_assoc($resultInterface);
+		
+		//DEFINE NOME INTERFACE
+		$nomeInterface =$rowInterface['NOME']; 
+		
+		//DEFINE SERVIDOR
+		$codServidor = $rowInterface['SERVIDORES_ID'];
+		
+		//DEFINE COD DO SERVIDOR RADIUS
+		$codServidorRadius = $rowInterface['SERVIDOR_RADIUS_ID'];
+		
+		//DEFINE TIPO DE AUTENTICA��O E CONTROLE
+		// 1 - SIM
+		// 0 - NAO
+		//
+		$hotspot =  $rowInterface['HOSTPOT'];
+		$ppoe =  $rowInterface['PPOE'];
+		$simples_queue =  $rowInterface['SIMPLES_QUEUE'];
+		$hotspot_radius =  $rowInterface['HOTSPOT_RADIUS'];
+		
+		
+		//SE UTILIZAR AUTENTICACAO+CONTROLE PELO HOTSPOT
+		if($hotspot == 1)
+		{
+			$query1 = "SELECT * FROM servidores WHERE ID=$codServidor";
+			$result1 = mysql_query($query1);
+			$nRow1 = mysql_num_rows($result1);
+			if($nRow1 == 0)
+			{
+				return 'CADASTRAR PLANO DE ACESSO: SERVIDOR NÃO ENCONTRADO';
+			}
+			$row1 = mysql_fetch_assoc($result1);
+			//DADOS DO SERVIDOR
+			$porta = $row1['PORTA_API'];
+			$ip = $row1['ENDERECO_IP'];
+			$usuario = $row1['USUARIO'];
+			$senha = $row1['SENHA'];
+			
+			//PREPARA A INTERFACE NO SERVIDOR
+			//
+			//--1-CADASTRA USER-PROFILE NO HOTSPOT DO SERVIDOR
+		
+					//INSTANCIA A API DO MIKROTIK
+					$API = new routeros_api();
+					$API->port = $porta;				
+					$API->debug = true;
+					
+					if ($API->connect($ip, $usuario, $senha)) 
+					{
+						
+						
+						 //RENOMEIA INTERFACE DO CLIENTE;
+						 $API->write('/ip/hotspot/user/profile/add',false);
+						 $API->write('=name=' . $planoAcesso->NOME,false);
+						 $API->write('=rate-limit=' . $planoAcesso->RATE_LIMIT,false);
+						 $API->write('=shared-users=' . $planoAcesso->SHARED_USERS,false);
+						if($planoAcesso->SESSION_TIMEOUT != '00:00:00')
+						{
+						 $API->write('=session-timeout=' . $planoAcesso->SESSION_TIMEOUT,false);
+						}
+						 $API->write('=keepalive-timeout=' . $planoAcesso->KEEPALIVE_TIMEOUT,false);
+						 $API->write('=idle-timeout=' . $planoAcesso->IDLE_TIMEOUT,false);
+						 $API->write('=status-autorefresh=' . $planoAcesso->STATUS_AUTOREFRESH);
+						
+						  $API->read();
+						 
+						 //add idle-timeout=4h keepalive-timeout=1m name=150k rate-limit=150k/150k shared-users=1 status-autorefresh=3m
+						 //CADASTRAR PLANO NA TABELA PLANO_ACESSO
+						 
+					   $queryPlanoAcesso = "INSERT INTO planos_acesso (INTERFACE_ID, NOME, RATE_LIMIT,SHARED_USERS,SESSION_TIMEOUT,KEEPALIVE_TIMEOUT,IDLE_TIMEOUT,STATUS_AUTOREFRESH,  VALOR) VALUES 
+					   ('$planoAcesso->INTERFACE_ID', '$planoAcesso->NOME', '$planoAcesso->RATE_LIMIT', '$planoAcesso->SHARED_USERS', '$planoAcesso->SESSION_TIMEOUT', '$planoAcesso->KEEPALIVE_TIMEOUT','$planoAcesso->IDLE_TIMEOUT', '$planoAcesso->STATUS_AUTOREFRESH', '$planoAcesso->VALOR')";
+					   if(!$resultPlanoAcesso = mysql_query($queryPlanoAcesso))
+					   {
+					   		return 'ERRO: '.mysql_error();
+					   }
+					   
+					   	  $API->disconnect();
+					}else{
+					   return 'ERRO';
+					}							  	
+			}
+			
+			
+			
+		
+		
+		
+		//SE UTILIZAR AUTENTICA��O+CONTROLE NO HOTSPOT
+		if($hotspot_radius == 1)
+		{
+		   //BUSCAR SERVIDOR RADIUS ASSOCIADO;
+		   $queryServidorRadius = "SELECT * FROM servidores_radius WHERE ID = $codServidorRadius";
+		   $resultServidorRadius = mysql_query($queryServidorRadius);
+		   $nRowServidorRadius = mysql_num_rows($resultServidorRadius);
+		   if($nRowServidorRadius == 0){return 'ERRO: SERVIDOR RADIUS N�O ENCONTRADO';}
+		   $rowServidorRadius = mysql_fetch_assoc($resultServidorRadius);
+		   
+		   //DEFINE PARAMETROS DO SERVIDOR RADIUS
+		   $ipRadius = $rowServidorRadius['IP_FREERADIUS'];
+		   $userMysql = $rowServidorRadius['USERNAME_MYSQL'];
+		   $senhaMysql = $rowServidorRadius['PASSWORD_MYSQL'];
+		   $bancoMysql = $rowServidorRadius['BANCO_DADOS'];
+
+		   //TENTA CONECTAR AO SERVIDOR MYSQL
+		   if($con = mysql_pconnect($ipRadius, $userMysql, $senhaMysql))
+		   {
+		   	
+			   	//CADASTRA PLANO DE ACESSO NA TABELA radgroupreply DO RADIUS
+			   	$groupName = $planoAcesso->INTERFACE_ID."_".$planoAcesso->NOME;
+			   	$value = $planoAcesso->RATE_LIMIT;
+			   	$querRadGroupRapley = "INSERT INTO ".$bancoMysql.".radgroupreply (groupname, attribute, op, value) VALUES 
+			   	('$groupName', 'Mikrotik-Rate-Limit', ':=', '$value')";
+			   	
+			   	if(!$resultRadGroupRapley = mysql_query($querRadGroupRapley, $con))
+			   	{
+			   		return 'ERRO: '.mysql_error();
+			   	}		   		
+		   
+		   }else{
+		   		return 'ERRO: '.mysql_error();
+		   }
+		   		//FECHA CONEX�O REMOTA
+		   		mysql_close($con);
+		   		
+		   new BaseClass();
+		   //CADASTRAR PLANO NA TABELA PLANO_ACESSO
+		   $queryPlanoAcesso = "INSERT INTO planos_acesso (INTERFACE_ID, NOME, RATE_LIMIT, VALOR) VALUES 
+		   ('$planoAcesso->INTERFACE_ID', '$planoAcesso->NOME', '$planoAcesso->RATE_LIMIT', '$planoAcesso->VALOR')";
+		   if(!$resultPlanoAcesso = mysql_query($queryPlanoAcesso))
+		   {
+		   		return 'ERRO: '.mysql_error();
+		   }
+		}
+		
+		
+		if($simples_queue == 1)
+		{
+			
+		   //CADASTRAR PLANO NA TABELA PLANO_ACESSO
+		   $queryPlanoAcesso = "INSERT INTO planos_acesso (INTERFACE_ID, NOME, RATE_LIMIT, VALOR) VALUES 
+		   ('$planoAcesso->INTERFACE_ID', '$planoAcesso->NOME', '$planoAcesso->RATE_LIMIT', '$planoAcesso->VALOR')";
+		   if(!$resultPlanoAcesso = mysql_query($queryPlanoAcesso))
+		   {
+		   		return 'ERRO: '.mysql_error();
+		   }
+		}
+		
+		return 'OK';
+		
+	}
+}

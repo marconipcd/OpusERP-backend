@@ -1,0 +1,72 @@
+<?php
+
+require_once 'classes/BaseClass.php';
+require_once 'vo/FiadorVO.php';
+
+class Fiador extends BaseClass
+{
+	public function listarFiador($id)
+	{
+		$query = "SELECT * FROM fiadores WHERE codigocliente = '$id'";
+		$result = mysql_query($query);
+		$row = mysql_fetch_assoc($result);
+		
+		$fiador = new FiadorVO();
+			
+		$cpf = str_replace('.', '', $row['cpfFiador']);
+		$cpf1 = str_replace('-', '',$cpf);
+		
+		$dataNascimentoFiador = str_replace('/', '', $row['datanascimentofiador']);
+		
+		$telefone0 = str_replace('(', '', $row['telefoneresidencialfiador']);
+		$telefone1 = str_replace(')', '', $telefone0);
+		$telefone2 = str_replace('-', '', $telefone1);
+		$telefone3 = str_replace(' ', '', $telefone2);
+		
+		$telefone4 = str_replace('(', '', $row['telefonecomercialfiador']);
+		$telefone5 = str_replace(')', '', $telefone4);
+		$telefone6 = str_replace('-', '', $telefone5);
+		$telefone7 = str_replace(' ', '', $telefone6);
+		
+		$telefone8 = str_replace('(', '', $row['celular1fiador']);
+		$telefone9 = str_replace(')', '', $telefone8);
+		$telefone10 = str_replace('-', '', $telefone9);
+		$telefone11 = str_replace(' ', '', $telefone10);
+		
+		
+		$telefone12 = str_replace('(', '', $row['celular2fiador']);
+		$telefone13 = str_replace(')', '', $telefone12);
+		$telefone14 = str_replace('-', '', $telefone13);
+		$telefone15 = str_replace(' ', '', $telefone14);
+		
+		
+		$fiador->id = $row['id']= $row['id'];
+		$fiador->codigocliente= $row['codigocliente'];
+		$fiador->cpfFiador= $cpf1;
+		$fiador->rgfiador= $row['rgfiador'];
+		$fiador->tratamentofiador= $row['tratamentofiador'];
+		$fiador->nomefiador= $row['nomefiador'];
+		$fiador->datanascimentofiador= $dataNascimentoFiador;
+		$fiador->cepfiador= $row['cepfiador'];
+		$fiador->enderecofiador= $row['enderecofiador'];
+		$fiador->numerofiador= $row['numerofiador'];
+		$fiador->complementofiador= $row['complementofiador'];
+		$fiador->bairrofiador= $row['bairrofiador'];
+		$fiador->cidadefiador= $row['cidadefiador'];
+		$fiador->uffiador= $row['uffiador'];
+		$fiador->paisfiador= $row['paisfiador']; 
+		$fiador->referenciafiador= $row['referenciafiador']; 	
+		$fiador->telefoneresidencialfiador= $telefone3; 	
+		$fiador->telefonecomercialfiador= $telefone7; 	
+		$fiador->celular1fiador= $telefone11; 	
+		$fiador->celular2fiador= $telefone15; 	
+		$fiador->emailfiador= $row['emailfiador']; 	
+		$fiador->msnfiador= $row['msnfiador'];	
+			
+			
+			
+			
+			
+		return $fiador;
+	}
+}

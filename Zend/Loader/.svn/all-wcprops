@@ -1,0 +1,23 @@
+K 25
+svn:wc:ra_dav:version-url
+V 51
+/svn/OpusWeb/!svn/ver/477/OpusWeb-PHPv2/Zend/Loader
+END
+Exception.php
+K 25
+svn:wc:ra_dav:version-url
+V 65
+/svn/OpusWeb/!svn/ver/477/OpusWeb-PHPv2/Zend/Loader/Exception.php
+END
+Autoloader.php
+K 25
+svn:wc:ra_dav:version-url
+V 66
+/svn/OpusWeb/!svn/ver/477/OpusWeb-PHPv2/Zend/Loader/Autoloader.php
+END
+PluginLoader.php
+K 25
+svn:wc:ra_dav:version-url
+V 68
+/svn/OpusWeb/!svn/ver/477/OpusWeb-PHPv2/Zend/Loader/PluginLoader.php
+END

@@ -1,0 +1,72 @@
+<?php
+
+require_once 'classes/BaseClass.php';
+
+
+class InfoFinanceira extends BaseClass
+{
+	public function listarInfoFinanceira($id)
+	{
+		$query = "SELECT * FROM financeiro WHERE codigocliente = '$id'";
+		$result = mysql_query($query);
+		$row = mysql_fetch_assoc($result);
+		
+		$infoFinanceira = new InfoFinanceiraVO();
+			
+		
+		$infoFinanceira->id = $row['id'];	
+		$infoFinanceira->codigocliente = $row['codigocliente']; 	
+		$infoFinanceira->siatuacaospc = $row['siatuacaospc']; 	
+		$infoFinanceira->ultimaconsultaspc = $row['ultimaconsultaspc']; 	
+		$infoFinanceira->situacaoserasa = $row['situacaoserasa']; 	
+		$infoFinanceira->ultimaconsultaserasa = $row['ultimaconsultaserasa']; 	
+		$infoFinanceira->naturalidade = $row['naturalidade']; 	
+		$infoFinanceira->nacionalidade = $row['nacionalidade']; 	
+		$infoFinanceira->residencia = $row['residencia']; 	
+		$infoFinanceira->temporesidencia = $row['temporesidencia']; 	
+		$infoFinanceira->estadocivil = $row['estadocivil']; 	
+		$infoFinanceira->nfilhos = $row['nfilhos']; 	
+		$infoFinanceira->valoraluguel = $row['valoraluguel']; 	
+		$infoFinanceira->conjuge = $row['conjuge']; 	
+		$infoFinanceira->nomepai = $row['nomepai']; 	
+		$infoFinanceira->nomemae = $row['nomemae']; 	
+		$infoFinanceira->empresatrabalha = $row['empresatrabalha']; 	
+		$infoFinanceira->dataadmissao = str_replace('/', '', $row['dataadmissao']); 	
+		$infoFinanceira->carteiraprofissional = $row['carteiraprofissional']; 	
+		$infoFinanceira->profissao = $row['profissao']; 	
+		$infoFinanceira->cargo = $row['cargo']; 	
+		$infoFinanceira->cepempresa = $row['cepempresa']; 	
+		$infoFinanceira->enderecoempresa = $row['enderecoempresa']; 	
+		$infoFinanceira->numeroempresa = $row['numeroempresa']; 	
+		$infoFinanceira->complementoempresa = $row['complementoempresa']; 	
+		$infoFinanceira->bairroempresa = $row['bairroempresa']; 	
+		$infoFinanceira->cidadeempresa = $row['cidadeempresa']; 	
+		$infoFinanceira->ufempresa = $row['ufempresa']; 	
+		$infoFinanceira->paisempresa = $row['paisempresa']; 	
+		$infoFinanceira->refenciaempresa = $row['refenciaempresa']; 	
+		$infoFinanceira->referenciacomercial1 = $row['referenciacomercial1']; 	
+		$infoFinanceira->refTelefone1 = $row['refTelefone1']; 	
+		$infoFinanceira->refContato1 = $row['refContato1']; 	
+		$infoFinanceira->referenciacomercial2 = $row['referenciacomercial2']; 	
+		$infoFinanceira->refTelefone2 = $row['refTelefone2']; 	
+		$infoFinanceira->refContato2 = $row['refContato2']; 	
+		$infoFinanceira->referenciacomercial3 = $row['referenciacomercial3']; 	
+		$infoFinanceira->refTelefone3 = $row['refTelefone3']; 	
+		$infoFinanceira->refContato3 = $row['refContato3']; 	
+		$infoFinanceira->banco = $row['banco']; 	
+		$infoFinanceira->agencia = $row['agencia']; 	
+		$infoFinanceira->fone = $row['fone'];
+		$infoFinanceira->dataabertura = str_replace('/', '', $row['dataabertura']); 	
+		$infoFinanceira->rendamensal = $row['rendamensal']; 	
+		$infoFinanceira->limitecredito = $row['limitecredito']; 	
+		$infoFinanceira->saldolimitecredito = $row['saldolimitecredito']; 	
+		$infoFinanceira->valorreceber = $row['valorreceber']; 	
+		$infoFinanceira->valoratraso = $row['valoratraso'];	
+			
+			
+			
+			
+			
+		return $infoFinanceira;
+	}
+}

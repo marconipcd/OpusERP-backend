@@ -1,0 +1,239 @@
+K 25
+svn:wc:ra_dav:version-url
+V 59
+/svn/OpusWeb/!svn/ver/477/OpusWeb-PHPv2/util/boleto/include
+END
+funcoes_bb4.php
+K 25
+svn:wc:ra_dav:version-url
+V 75
+/svn/OpusWeb/!svn/ver/477/OpusWeb-PHPv2/util/boleto/include/funcoes_bb4.php
+END
+layout_unibanco.php
+K 25
+svn:wc:ra_dav:version-url
+V 79
+/svn/OpusWeb/!svn/ver/477/OpusWeb-PHPv2/util/boleto/include/layout_unibanco.php
+END
+funcoes_besc.php
+K 25
+svn:wc:ra_dav:version-url
+V 76
+/svn/OpusWeb/!svn/ver/477/OpusWeb-PHPv2/util/boleto/include/funcoes_besc.php
+END
+layout_bancoob.php
+K 25
+svn:wc:ra_dav:version-url
+V 78
+/svn/OpusWeb/!svn/ver/477/OpusWeb-PHPv2/util/boleto/include/layout_bancoob.php
+END
+layout_banestes.php
+K 25
+svn:wc:ra_dav:version-url
+V 79
+/svn/OpusWeb/!svn/ver/477/OpusWeb-PHPv2/util/boleto/include/layout_banestes.php
+END
+layout_bb2.php
+K 25
+svn:wc:ra_dav:version-url
+V 74
+/svn/OpusWeb/!svn/ver/477/OpusWeb-PHPv2/util/boleto/include/layout_bb2.php
+END
+layout_bb3.php
+K 25
+svn:wc:ra_dav:version-url
+V 74
+/svn/OpusWeb/!svn/ver/477/OpusWeb-PHPv2/util/boleto/include/layout_bb3.php
+END
+layout_bb4.php
+K 25
+svn:wc:ra_dav:version-url
+V 74
+/svn/OpusWeb/!svn/ver/477/OpusWeb-PHPv2/util/boleto/include/layout_bb4.php
+END
+funcoes_sicredi.php
+K 25
+svn:wc:ra_dav:version-url
+V 79
+/svn/OpusWeb/!svn/ver/477/OpusWeb-PHPv2/util/boleto/include/funcoes_sicredi.php
+END
+funcoes_real.php
+K 25
+svn:wc:ra_dav:version-url
+V 76
+/svn/OpusWeb/!svn/ver/477/OpusWeb-PHPv2/util/boleto/include/funcoes_real.php
+END
+funcoes_bb.php
+K 25
+svn:wc:ra_dav:version-url
+V 74
+/svn/OpusWeb/!svn/ver/477/OpusWeb-PHPv2/util/boleto/include/funcoes_bb.php
+END
+funcoes_nossacaixa.php
+K 25
+svn:wc:ra_dav:version-url
+V 82
+/svn/OpusWeb/!svn/ver/477/OpusWeb-PHPv2/util/boleto/include/funcoes_nossacaixa.php
+END
+layout_hsbc.php
+K 25
+svn:wc:ra_dav:version-url
+V 75
+/svn/OpusWeb/!svn/ver/477/OpusWeb-PHPv2/util/boleto/include/layout_hsbc.php
+END
+funcoes_sudameris.php
+K 25
+svn:wc:ra_dav:version-url
+V 81
+/svn/OpusWeb/!svn/ver/477/OpusWeb-PHPv2/util/boleto/include/funcoes_sudameris.php
+END
+layout_bradesco.php
+K 25
+svn:wc:ra_dav:version-url
+V 79
+/svn/OpusWeb/!svn/ver/477/OpusWeb-PHPv2/util/boleto/include/layout_bradesco.php
+END
+funcoes_cef.php
+K 25
+svn:wc:ra_dav:version-url
+V 75
+/svn/OpusWeb/!svn/ver/477/OpusWeb-PHPv2/util/boleto/include/funcoes_cef.php
+END
+layout_sicredi.php
+K 25
+svn:wc:ra_dav:version-url
+V 78
+/svn/OpusWeb/!svn/ver/477/OpusWeb-PHPv2/util/boleto/include/layout_sicredi.php
+END
+funcoes_unibanco.php
+K 25
+svn:wc:ra_dav:version-url
+V 80
+/svn/OpusWeb/!svn/ver/477/OpusWeb-PHPv2/util/boleto/include/funcoes_unibanco.php
+END
+funcoes_banestes.php
+K 25
+svn:wc:ra_dav:version-url
+V 80
+/svn/OpusWeb/!svn/ver/477/OpusWeb-PHPv2/util/boleto/include/funcoes_banestes.php
+END
+funcoes_cef_sigcb.php
+K 25
+svn:wc:ra_dav:version-url
+V 81
+/svn/OpusWeb/!svn/ver/477/OpusWeb-PHPv2/util/boleto/include/funcoes_cef_sigcb.php
+END
+layout_sudameris.php
+K 25
+svn:wc:ra_dav:version-url
+V 80
+/svn/OpusWeb/!svn/ver/477/OpusWeb-PHPv2/util/boleto/include/layout_sudameris.php
+END
+layout_cef.php
+K 25
+svn:wc:ra_dav:version-url
+V 74
+/svn/OpusWeb/!svn/ver/477/OpusWeb-PHPv2/util/boleto/include/layout_cef.php
+END
+funcoes_santander_banespa.php
+K 25
+svn:wc:ra_dav:version-url
+V 89
+/svn/OpusWeb/!svn/ver/477/OpusWeb-PHPv2/util/boleto/include/funcoes_santander_banespa.php
+END
+funcoes_banespa.php
+K 25
+svn:wc:ra_dav:version-url
+V 79
+/svn/OpusWeb/!svn/ver/477/OpusWeb-PHPv2/util/boleto/include/funcoes_banespa.php
+END
+layout_itau.php
+K 25
+svn:wc:ra_dav:version-url
+V 75
+/svn/OpusWeb/!svn/ver/477/OpusWeb-PHPv2/util/boleto/include/layout_itau.php
+END
+funcoes_hsbc.php
+K 25
+svn:wc:ra_dav:version-url
+V 76
+/svn/OpusWeb/!svn/ver/477/OpusWeb-PHPv2/util/boleto/include/funcoes_hsbc.php
+END
+funcoes_bradesco.php
+K 25
+svn:wc:ra_dav:version-url
+V 80
+/svn/OpusWeb/!svn/ver/477/OpusWeb-PHPv2/util/boleto/include/funcoes_bradesco.php
+END
+layout_santander_banespa.php
+K 25
+svn:wc:ra_dav:version-url
+V 88
+/svn/OpusWeb/!svn/ver/477/OpusWeb-PHPv2/util/boleto/include/layout_santander_banespa.php
+END
+layout_banespa.php
+K 25
+svn:wc:ra_dav:version-url
+V 78
+/svn/OpusWeb/!svn/ver/477/OpusWeb-PHPv2/util/boleto/include/layout_banespa.php
+END
+layout_besc.php
+K 25
+svn:wc:ra_dav:version-url
+V 75
+/svn/OpusWeb/!svn/ver/477/OpusWeb-PHPv2/util/boleto/include/layout_besc.php
+END
+funcoes_cef_sinco.php
+K 25
+svn:wc:ra_dav:version-url
+V 81
+/svn/OpusWeb/!svn/ver/477/OpusWeb-PHPv2/util/boleto/include/funcoes_cef_sinco.php
+END
+layout_bb.php
+K 25
+svn:wc:ra_dav:version-url
+V 73
+/svn/OpusWeb/!svn/ver/477/OpusWeb-PHPv2/util/boleto/include/layout_bb.php
+END
+layout_real.php
+K 25
+svn:wc:ra_dav:version-url
+V 75
+/svn/OpusWeb/!svn/ver/477/OpusWeb-PHPv2/util/boleto/include/layout_real.php
+END
+funcoes_itau.php
+K 25
+svn:wc:ra_dav:version-url
+V 76
+/svn/OpusWeb/!svn/ver/477/OpusWeb-PHPv2/util/boleto/include/funcoes_itau.php
+END
+layout_cef_sinco.php
+K 25
+svn:wc:ra_dav:version-url
+V 80
+/svn/OpusWeb/!svn/ver/477/OpusWeb-PHPv2/util/boleto/include/layout_cef_sinco.php
+END
+funcoes_bancoob.php
+K 25
+svn:wc:ra_dav:version-url
+V 79
+/svn/OpusWeb/!svn/ver/477/OpusWeb-PHPv2/util/boleto/include/funcoes_bancoob.php
+END
+layout_nossacaixa.php
+K 25
+svn:wc:ra_dav:version-url
+V 81
+/svn/OpusWeb/!svn/ver/477/OpusWeb-PHPv2/util/boleto/include/layout_nossacaixa.php
+END
+funcoes_bb2.php
+K 25
+svn:wc:ra_dav:version-url
+V 75
+/svn/OpusWeb/!svn/ver/477/OpusWeb-PHPv2/util/boleto/include/funcoes_bb2.php
+END
+funcoes_bb3.php
+K 25
+svn:wc:ra_dav:version-url
+V 75
+/svn/OpusWeb/!svn/ver/477/OpusWeb-PHPv2/util/boleto/include/funcoes_bb3.php
+END

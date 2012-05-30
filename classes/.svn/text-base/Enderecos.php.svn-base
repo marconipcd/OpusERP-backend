@@ -1,0 +1,57 @@
+<?php
+
+require_once 'classes/BaseClass.php';
+require_once 'vo/EnderecosVO.php';
+
+
+class Enderecos extends BaseClass
+{
+	public function listarEnderecos($id)
+	{
+		$query = "SELECT * FROM enderecos WHERE codigocliente = '$id'";
+		$result = mysql_query($query);
+		$row = mysql_fetch_assoc($result);
+		
+		$queryCombos = "select * from combo_enderecos where codCliente = '$id'";
+		$resultCombos = mysql_query($queryCombos);
+		$rowCombos = mysql_fetch_assoc($resultCombos);
+			
+		$Endereco = new EnderecosVO();
+			
+			$Endereco->id = $row['id'];
+			$Endereco->codigocliente = $row['codigocliente'];
+			$Endereco->cepentrega = $row['cepentrega'];
+			$Endereco->enderecoentrega = $row['enderecoentrega'];
+			$Endereco->numeroentrega = $row['numeroentrega'];
+			$Endereco->complementoentrega = $row['complementoentrega'];
+			$Endereco->bairroentrega = $row['bairroentrega'];
+			$Endereco->cidadeentrega = $row['cidadeentrega'];
+			$Endereco->ufentrega = $row['ufentrega'];
+			$Endereco->paisentrega = $row['paisentrega'];
+			$Endereco->referenciaEntrega = $row['referenciaEntrega'];
+			$Endereco->cepcobranca = $row['cepcobranca'];
+			$Endereco->enderecocobranca = $row['enderecocobranca'];
+			$Endereco->numerocobranca = $row['numerocobranca'];
+			$Endereco->complementocobranca = $row['complementocobranca'];
+			$Endereco->bairrocobranca = $row['bairrocobranca'];
+			$Endereco->cidadecobranca = $row['cidadecobranca'];
+			$Endereco->ufcobranca = $row['ufcobranca'];
+			$Endereco->paiscobranca = $row['paiscobranca'];
+			$Endereco->referenciaCobranca = $row['referenciaCobranca'];
+			$Endereco->observacoes = $row['observacoes'];
+			$Endereco->idCBEnderecoCobranca = $rowCombos['idCBEnderecoCobranca'];
+			$Endereco->idCBEnderecoEntrega = $rowCombos['idCBEnderecoEntrega'];
+			$Endereco->idCBEnderecoFiador = $rowCombos['idCBEnderecoFiador'];
+			
+			$total = mysql_num_rows($result);
+			
+			
+			
+				return $Endereco;
+			
+			
+	}
+
+	
+
+}

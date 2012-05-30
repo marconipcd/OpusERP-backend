@@ -1,0 +1,43 @@
+<?php
+
+require_once 'classes/BaseClass.php';
+require_once 'vo/CrmAtrendimentoVO.php';
+
+
+class CrmAtrendimento extends BaseClass
+{
+		  public function listarAtendimentos($id)
+		  {
+			
+				$query = "SELECT * FROM crmatendimentos WHERE codCliente = '$id'"; 
+				$result = mysql_query($query);
+                
+				
+				while($row = mysql_fetch_assoc($result))
+				{
+					
+					$atendimento = new CrmAtrendimentoVO();
+					
+					$atendimento->id = $row['id'];
+					$atendimento->codCliente= $row['codCliente'];
+					$atendimento->atendente= $row['atendente'];
+					$atendimento->dataatendimento= $row['dataatendimento'];
+						
+						$dia = substr($atendimento->dataatendimento, 0, 2);
+						$mes = substr($atendimento->dataatendimento, 2, 2);
+						$ano = substr($atendimento->dataatendimento, 4, 4);
+					$atendimento->dataatendimento = $dia.'/'.$mes.'/'.$ano;
+					
+					$atendimento->horaatendimento = $row['horaatendimento'];
+						
+						$h = substr($atendimento->horaatendimento, 0, 2);
+						$m = substr($atendimento->horaatendimento, 2, 2);
+						$s = substr($atendimento->horaatendimento, 4, 2);
+					$atendimento->horaatendimento = $h.':'.$m.':'.$s.' hs';
+					$atendimento->observacoes = $row['observacoes'];			
+
+					$atendimentos[] = $atendimento;
+				}
+			    return $atendimentos;
+		  }
+}

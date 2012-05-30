@@ -1,0 +1,45 @@
+<?php
+
+require_once 'classes/BaseClass.php';
+require_once 'vo/LogOpusVO.php';
+
+class LogOpus extends BaseClass
+{
+	public function cadastrarLog(LogOpusVO $logOpus)
+	{
+		$logOpus->USER_LOGADO = strtoupper($logOpus->USER_LOGADO);
+		$query = "INSERT INTO log_opus (EMPRESA_ID,DESC_LOG, USER_LOGADO) VALUES " .
+				"('$logOpus->EMPRESA_ID','$logOpus->DESC_LOG', '$logOpus->USER_LOGADO')";
+		if(!$result = mysql_query($query))
+		{
+			return 'GRAVAR LOG RETORNOU UM ERRO '.mysql_error();
+		}
+	}
+	public function listarLog($codEmpresa)
+	{
+
+		$query = "SELECT * FROM log_opus WHERE EMPRESA_ID=$codEmpresa ORDER by ID DESC";
+		$result = mysql_query($query);
+		$nRow = mysql_num_rows($result);
+		if($nRow == 0)
+		{
+			return 'ERRO';
+		}
+		
+		while ( $row = mysql_fetch_assoc($result) ) {
+			
+			$logOpus = new LogOpusVO();
+			
+			$logOpus->ID = $row['ID'];
+			$logOpus->EMPRESA_ID = $row['EMPRESA_ID'];
+			$logOpus->DATA_HORA = $row['DATA_HORA'];
+			$logOpus->DESC_LOG = $row['DESC_LOG'];
+			$logOpus->USER_LOGADO = $row['USER_LOGADO'];
+		
+			$logOpuss[] = $logOpus;
+		}
+		
+		return $logOpuss;	
+	}
+}
+

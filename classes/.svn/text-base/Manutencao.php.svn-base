@@ -1,0 +1,434 @@
+<?php
+
+require_once 'BaseClass.php';
+require_once 'vo/manutencaoVO.php';
+require_once 'vo/ClientesVO.php';
+require_once 'vo/tipoProblema_OSI.php';
+
+class Manutencao extends BaseClass
+{
+	public function listarOs()
+	{
+		$query = "SELECT manutencoes. * , pessoa.codigoPessoa, pessoa.textoNome, pessoa.textoEndereco, 
+		pessoa.referencia, pessoa.telefone, pessoa.telefone2, pessoa.celular1, pessoa.celular2 FROM manutencoes 
+		INNER JOIN pessoa ON manutencoes.codigo_cliente = pessoa.codigoPessoa WHERE manutencoes.status != 'ENTREGUE'  
+		ORDER BY data_agendada ASC";
+		
+		$result = mysql_query($query);		
+		$nrow = mysql_num_rows($result);
+		
+			if($nrow > 0)
+			{
+				while($row = mysql_fetch_assoc($result))
+				{
+					$os = new manutencaoVO();
+					
+					$diaAtual = date('d');
+					$mesAtual = date('m');
+					$anoAtual = date('Y');
+							
+					$dataVerificada =  explode('-',$row['data_entrada']);
+
+					#setando a primeira data  10/01/2008
+					$dataAtual = mktime(0,0,0,$mesAtual,$diaAtual,$anoAtual);
+					#setando segunda data 10/02/2008
+					$dataAgendada = mktime(0,0,0,$dataVerificada[1],$dataVerificada[2],$dataVerificada[0]);  
+					#armazenando o valor da subtracao das datas
+					$d3 = ($dataAtual-$dataAgendada);
+					#usando o roud para arrendondar os valores
+					#converter o tempo em dias
+					$dias = round(($d3/60/60/24));
+										
+					
+					$os->os = $row['os'];
+					$os->codigo_cliente = $row['codigo_cliente'];
+					$os->textoNome = $row['textoNome'];
+					$os->data_entrada = $row['data_entrada'];
+					$os->data_agendada = $row['data_agendada'];
+					$os->contato = $row['contato'];
+					$os->equipamento = $row['equipamento'];
+					$os->acessorios = $row['acessorios'];
+					$os->manu_observacao = $row['manu_observacao'];
+					$os->recebido_por = $row['recebido_por'];
+					$os->dias_conserto = $dias;
+					$os->status = $row['status'];
+					$os->tecnico = $row['tecnico'];
+					$os->data_conclusao = $row['data_conclusao'];
+					$os->problema = $row['problema'];
+					$os->laudo = $row['laudo'];
+					$os->valor = $row['valor'];
+					$os->nf_garantia = $row['nf_garantia'];
+					
+					$oss[] = $os;
+					
+				}
+				
+				return $oss;
+			}else
+			{
+				return 'Nenhum Registro Encontrado';
+			}
+		
+		
+	} 
+	public function listarTipoProOSI()
+	{
+			$query = "SELECT * FROM confg_tipo_problema_osi";
+			$result = mysql_query($query);	
+			
+			while($row = mysql_fetch_assoc($result))
+			{
+				$tproblema = new tipoProblema_OSI();
+				
+				$tproblema->id = $row['id'];
+				$tproblema->problema = $row['problema'];
+				$tproblema->valor = $row['valor'];
+				
+				$tproblemas[] = $tproblema;
+			}
+			
+			return $tproblemas;
+	}
+	public function cadastrarOs(manutencaoVO $manutencao, ClientesVO $cliente)
+	{
+		
+		$user_logado = $_SESSION["nome"];
+		$data_entrada = date('Y-m-d');
+		
+			$dia1 =  substr($manutencao->data_agendada, 0, 2);
+			$mes1 =  substr($manutencao->data_agendada, 3, 2);
+			$ano1 =  substr($manutencao->data_agendada, 6, 4);
+		
+			$dataAgendada= $ano1.'-'.$mes1.'-'.$dia1;
+		
+		//Cadastra O.S.
+		$query = "INSERT INTO manutencoes (codigo_cliente ,data_entrada ,data_agendada ,contato ,equipamento ,acessorios, manu_observacao ,recebido_por ,
+		status ,problema ,valor ,nf_garantia)VALUES 
+		('$manutencao->codigo_cliente', '$data_entrada', '$dataAgendada', '$manutencao->contato', '$manutencao->equipamento', '$manutencao->acessorios',
+		'$manutencao->manu_observacao', '$user_logado','ABERTO','$manutencao->problema','$manutencao->valor', '$manutencao->nf_garantia')";
+		$result = mysql_query($query);
+		
+	
+		
+		//Atualiza tabela de Clientes
+		$queryUp = "UPDATE pessoa SET 
+			textoEndereco = '$cliente->textoEndereco',
+			bairro = '$cliente->bairro',
+			referencia = '$cliente->referencia',
+			telefone = '$cliente->telefone',
+			telefone2 = '$cliente->telefone2',
+			celular1 = '$cliente->celular1',
+			celular2 = '$cliente->celular2',
+			complemento = '$cliente->complemento',
+			numero = '$cliente->numero' 
+			WHERE pessoa.codigoPessoa ='$cliente->codigoPessoa'";
+		$resultUp = mysql_query($queryUp); 
+		
+		
+	
+	}
+	public function excluirOs($id)
+	{
+		$query = "DELETE FROM manutencoes WHERE os = '$id'";
+		$result = mysql_query($query);
+		
+		return $result;
+	}
+	public function encaminharOs($id)
+	{
+		$user_logado = $_SESSION["nome"];
+		
+		$query = "UPDATE manutencoes SET status = 'ENCAMINHADO', tecnico = '$user_logado' WHERE os = '$id'";
+		$result = mysql_query($query);
+		
+		return $result;
+	}
+	public function fecharOs($id, $laudo, $problema, $valor, $nf)
+	{
+		$user_logado = $_SESSION["nome"];
+		$data_conclusao = date('Y-m-d');
+		
+		$query = "UPDATE manutencoes SET status = 'FECHADO', tecnico = '$user_logado', laudo = '$laudo', data_conclusao = '$data_conclusao', problema='$problema', valor='$valor', nf_garantia='$nf'  WHERE os = '$id'";
+		$result = mysql_query($query);
+		
+		return $result;
+	}
+	public function entregarOs($id, $valor)
+	{
+		$query = "UPDATE manutencoes SET status = 'ENTREGUE', valor = '$valor'  WHERE os = '$id'";
+		$result = mysql_query($query);
+		
+		$queryOs = "SELECT * FROM manutencoes WHERE os = '$id'";
+		$resultOs = mysql_query($queryOs);
+		$rowOs = mysql_fetch_assoc($resultOs);
+		$codCliente = $rowOs['codigo_cliente'];
+		
+		//GERAR BOLETO(S)
+		if($valor != '0,00')
+		{
+				
+				//Consultar ultimo boleto gerado
+				$sqlUltimoBoleto = "SELECT * FROM contasapagar ORDER BY id DESC";
+				$resultadoBoleto = mysql_query($sqlUltimoBoleto);
+			    $row_ultimo_boleto = mysql_fetch_assoc($resultadoBoleto);
+				
+           		//Serie do ultimo boleto gerado
+				$ultimoNumero = $resultadoBoleto['nNumero']; 
+              				
+				//Infor boletos
+				$dadosboleto["nosso_numero"] = $ultimoNumero+1;
+				$dadosboleto["convenio"] = "1248695"; 
+				$dadosboleto["formatacao_convenio"] = "7";
+				$dadosboleto["formatacao_nosso_numero"] = "2";
+
+				$dadosboleto["carteira"] = "18";
+				$dadosboleto["agencia"] = "0721-8";
+				$dadosboleto["conta"] = "18751-8";
+				
+				$nNumero = $dadosboleto["nosso_numero"];
+				
+				
+				$quantidade = '1';
+				
+				// o prazo começa com 0
+   				$_prazo = 0;
+   
+				for($i=0;$i < $quantidade;$i++)
+   				{
+		
+					$sequencia = $i;
+					if($i ==0){
+						$sequencia++;
+					}else if($i == $sequencia){
+						$sequencia++;
+					}
+					
+					$sequencia2 = str_pad($sequencia, 2, "0", STR_PAD_LEFT);
+					$ano = date('y');
+
+					
+       
+					//Consultar ultimo boleto gerado
+					$sqlUltimoBoleto2 = "SELECT * FROM contasapagar ORDER BY id DESC";
+					$resultadoBoleto2 = mysql_query($sqlUltimoBoleto2);
+					$row_ultimo_boleto2 = mysql_fetch_assoc($resultadoBoleto2);
+			    
+           			//Serie do ultimo boleto gerado
+					$ultimoNumero = $row_ultimo_boleto2['nNumero'];  
+					$ultimoBoleto = $ultimoNumero+1;
+				
+					$vencimento = date('d/m/Y');
+					
+					//$dataPrimeiroBoleto = "10/01/2011";
+					$_dia = substr($vencimento, 0, 2);
+   					$_mes = substr($vencimento, 3, 2);
+   					$_ano  = substr($vencimento, 6, 4);
+			
+	   				$_ts = mktime(0,0,0,$_mes+$_prazo,$_dia,$_ano);
+       				$_data = date('Y-m-d',$_ts);
+	   				
+	   				$NumeroNovo = $ultimoBoleto;
+	  				
+					$emissao = date('Y-m-d');
+					
+					$query_UltimoChamado = "SELECT * FROM manutencoes ORDER BY os DESC";
+					$result_UltimoChamado = mysql_query($query_UltimoChamado);
+					$row_ultimoChamado = mysql_fetch_assoc($result_UltimoChamado);
+					
+					$ndocumento = 'OSI_'.$id;
+					
+					//Inserindo
+					$sql = "INSERT INTO contasapagar (id,ndocumento,cliente,vencimento,valor, status, emissao, nNumero, controle) VALUES
+					('','$ndocumento', '$codCliente', '$emissao','$valor', 'ABERTO', '$emissao','$NumeroNovo', '$ndocumento')";
+					 
+					$resultadoSql = mysql_query($sql);
+        			
+        			//supondo que o vencimento é de 30 em 30 dias 
+					
+        			$_prazo += 1;
+        			
+    			}//for
+		}
+		
+		
+		return 'Processo Concluído com Sucesso';
+	}
+	public function gerarOsTxt($os)
+	{
+		
+		$query = "SELECT manutencoes. * , pessoa.* FROM manutencoes INNER JOIN pessoa ON manutencoes.codigo_cliente = pessoa.codigoPessoa WHERE manutencoes.os = '$os'";
+		$result = mysql_query($query);
+		$row = mysql_fetch_assoc($result);
+		
+		
+		$dataHoje = date('d/m/Y');
+		$hora = date('h:m');
+		$user_logado = $_SESSION["nome"];
+		
+		//unlink("./util2/os/OS_PRINT.txt");
+		$fp = fopen("./util2/os/OS_PRINT.txt", "w+");
+		
+		$quebra = chr(13).chr(10);
+		
+		$linha =  nl2br(str_pad('d i g i t a l', 48, " ", STR_PAD_BOTH));
+		$linha .= nl2br(str_pad("Rua Adjar Maciel, 35 Centro Belo Jardim/PE", 48, " ", STR_PAD_BOTH));
+		$linha .= nl2br(str_pad("CEP: 55.150-040 Fone: (81)3726.3125", 48, " ", STR_PAD_BOTH));
+		$linha .= nl2br(str_pad("CNPJ: 07.578.965/0001-05 IE: 18.3.050.0329", 48, " ", STR_PAD_BOTH));
+		$linha .= nl2br(str_pad("www.digitalonline.com.br", 48, " ", STR_PAD_BOTH));
+		$linha .= $quebra;
+		$linha .= $quebra;
+		$linha .= $quebra;
+		$linha .= nl2br(str_pad("ORDEM DE SERVICO", 48, " ", STR_PAD_BOTH));
+		$linha .= nl2br(str_pad("------------------------------------------------", 48, " ", STR_PAD_BOTH));
+		$linha .= nl2br(str_pad("OS nº: ".$os." EMISSAO: ".$dataHoje." HORA: ".$hora."", 48, " ", STR_PAD_BOTH));
+		$linha .= nl2br(str_pad("------------------------------------------------", 48, " ", STR_PAD_BOTH));	
+		$linha .= $quebra;
+		$linha .= $quebra;
+		$linha .= nl2br("Cliente..: ".$row['textoNome']."");
+		$linha .= $quebra;
+		$linha .= nl2br("".$row['textoEndereco'].", ".$row['numero']." - ".$row['bairro']." - ".$row['cidade']."/".$row['ufEstado']."");
+		$linha .= nl2br("Tel......: ".$row['telefone']." Cel......: ".$row['celular1']."  - Email....: ".$row['email']."");
+		$linha .= $quebra;
+		$linha .= nl2br(str_pad("------------------------------------------------", 48, " ", STR_PAD_BOTH));
+		$linha .= $quebra;
+		$linha .= nl2br("PRODUTO:");
+		$linha .= nl2br("".$row['equipamento']."");
+		$linha .= $quebra;
+		$linha .= nl2br("ACESSORIOS:");
+		$linha .= nl2br("".$row['acessorios']."");
+		$linha .= $quebra;
+		$linha .= nl2br("OBS:");
+		$linha .= nl2br("".$row['manu_observacao']."");
+		$linha .= $quebra;
+		$linha .= nl2br(str_pad("------------------------------------------------", 48, " ", STR_PAD_BOTH));
+		$linha .= $quebra;
+		$linha .= nl2br("Recebido por:");
+		$linha .= nl2br("".$row['recebido_por']."");
+		$linha .= $quebra;
+		$linha .= nl2br(str_pad("------------------------------------------------", 48, " ", STR_PAD_BOTH));
+		$linha .= $quebra;
+		$linha .= $quebra;
+		$linha .= nl2br("Atencao:");
+		$linha .= $quebra;
+		$linha .= nl2br("- O produto so estara coberto pela garantia se apresentar defeito de fabricacao.");
+		$linha .= $quebra;
+		$linha .= nl2br("- Servico como instacao de sofwares nao serao cobertos pela garantia.");
+		$linha .= $quebra;
+		$linha .= nl2br("- Dados contidos no equip. estao sujeitos a serem perdidos.");
+		$linha .= $quebra;
+		$linha .= nl2br("- Caso produto nao seja retirado da assitencia no prazo de 90 dias, sera considerado abandonado pelo cliente e podera ser vendido para custear a manutecao e armazenamento.");
+		$linha .= $quebra;
+		$linha .= $quebra;
+		$linha .= $quebra;
+		$linha .= $quebra;
+		$linha .= nl2br(str_pad("----------------------------------------", 48, " ", STR_PAD_BOTH));
+		$linha .= nl2br(str_pad("Assinatura", 48, " ", STR_PAD_BOTH));
+		$linha .= $quebra;
+		$linha .= $quebra;
+		$linha .= $quebra;
+		$linha .= $quebra;
+		$linha .= $quebra;
+		$linha .= $quebra;
+		$linha .= $quebra;
+		$linha .= $quebra;
+		$linha .= $quebra;
+		$linha .= $quebra;
+		$linha .= $quebra;
+		$linha .= $quebra;
+		$escreve = fwrite($fp, $linha);
+
+		// Fecha o arquivo
+		fclose($fp);
+	
+		return 'OS Gerada com Sucesso';
+	}
+	
+	public function gerarRecibo($cod, $empresa)
+	{
+		
+		if($empresa == '1')
+		{
+			$query = "SELECT contasapagar. * , pessoa.textoNome FROM contasapagar INNER JOIN pessoa ON contasapagar.cliente = pessoa.codigoPessoa
+				WHERE contasapagar.id = '$cod'";	
+		}else if($empresa == '2')
+		{
+			$query = "SELECT contas_receber_digital. * , pessoa.textoNome FROM contas_receber_digital INNER JOIN pessoa ON contas_receber_digital.cliente = pessoa.codigoPessoa
+				WHERE contas_receber_digital.id = '$cod'";	
+		}else if($empresa == '3')
+		{
+			$query = "SELECT contas_receber_grafica. * , pessoa.textoNome FROM contas_receber_grafica INNER JOIN pessoa ON contas_receber_grafica.cliente = pessoa.codigoPessoa
+				WHERE contas_receber_grafica.id = '$cod'";		
+		}
+		
+		$result = mysql_query($query);
+		$row = mysql_fetch_assoc($result);
+		
+		
+		$dataHoje = date('d/m/Y');
+		$hora = date('h:m');
+		$user_logado = $_SESSION["nome"];
+		
+		//unlink("./util2/os/OS_PRINT.txt");
+		$fp = fopen("./util2/os/OS_PRINT.txt", "w+");
+		
+		$quebra = chr(13).chr(10);
+		
+		$linha =  nl2br(str_pad('d i g i t a l', 48, " ", STR_PAD_BOTH));
+		$linha .= nl2br(str_pad("Rua Adjar Maciel, 35 Centro Belo Jardim/PE", 48, " ", STR_PAD_BOTH));
+		$linha .= nl2br(str_pad("CEP: 55.150-040 Fone: (81)3726.3125", 48, " ", STR_PAD_BOTH));
+		$linha .= nl2br(str_pad("CNPJ: 07.578.965/0001-05 IE: 18.3.050.0329", 48, " ", STR_PAD_BOTH));
+		$linha .= nl2br(str_pad("www.digitalonline.com.br", 48, " ", STR_PAD_BOTH));
+		$linha .= $quebra;
+		$linha .= $quebra;
+		$linha .= $quebra;
+		$linha .= nl2br(str_pad("RECIBO DE PAGAMENTO", 48, " ", STR_PAD_BOTH));
+		$linha .= nl2br(str_pad("------------------------------------------------", 48, " ", STR_PAD_BOTH));
+		$linha .= nl2br(str_pad("EMISSAO: ".$dataHoje." HORA: ".$hora."", 48, " ", STR_PAD_BOTH));
+		$linha .= nl2br(str_pad("------------------------------------------------", 48, " ", STR_PAD_BOTH));	
+		$linha .= $quebra;
+		$linha .= $quebra;
+		$linha .= nl2br(str_pad("INFORMACOES DO BOLETO", 48, " ", STR_PAD_BOTH));
+		$linha .= nl2br(str_pad("------------------------------------------------", 48, " ", STR_PAD_BOTH));	
+		$linha .= $quebra;
+		$linha .= nl2br("Cliente..: ".$row['textoNome']."").$quebra;
+		$linha .= nl2br("Cod Boleto: ".$row['id']."").$quebra;
+		$linha .= nl2br("N. Doc.: ".$row['ndocumento']."").$quebra;
+		$linha .= nl2br("Valor.: ".$row['valor']."").$quebra;
+		$linha .= nl2br("Data Venc.: ".$row['vencimento']."").$quebra;
+		$linha .= nl2br(str_pad("------------------------------------------------", 48, " ", STR_PAD_BOTH));
+		$linha .= $quebra;
+		$linha .= $quebra;
+		$linha .= nl2br(str_pad("INFORMACOES DE PAGAMENTO", 48, " ", STR_PAD_BOTH));
+		$linha .= nl2br(str_pad("------------------------------------------------", 48, " ", STR_PAD_BOTH));	
+		$linha .= $quebra;
+		$linha .= nl2br("Data Pag..: ".$row['dataPagamento']."").$quebra;
+		$linha .= nl2br("Valor Pgto.: ".$row['valorPagamento']."").$quebra;
+		$linha .= nl2br("Forma Pgto.: ".$row['formaPgto']."").$quebra;
+		$linha .= nl2br("Tipo.: ".$row['tipo']."").$quebra;
+		$linha .= nl2br(str_pad("------------------------------------------------", 48, " ", STR_PAD_BOTH));	
+		$linha .= $quebra;
+		$linha .= $quebra;
+		$linha .= $quebra;
+		$linha .= nl2br(str_pad("----------------------------------------", 48, " ", STR_PAD_BOTH));
+		$linha .= nl2br(str_pad("Assinatura", 48, " ", STR_PAD_BOTH));
+		$linha .= $quebra;
+		$linha .= $quebra;
+		$linha .= $quebra;
+		$linha .= $quebra;
+		$linha .= $quebra;
+		$linha .= $quebra;
+		$linha .= $quebra;
+		$linha .= $quebra;
+		$linha .= $quebra;
+		$linha .= $quebra;
+		$linha .= $quebra;
+		$linha .= $quebra;
+		$escreve = fwrite($fp, $linha);
+
+		// Fecha o arquivo
+		fclose($fp);
+	
+		return '/util2/os/OS_PRINT.txt';
+	}
+
+}

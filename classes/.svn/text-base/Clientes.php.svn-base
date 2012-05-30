@@ -1,0 +1,876 @@
+<?php
+
+require_once 'classes/BaseClass.php';
+require_once 'vo/ClientesVO.php';
+require_once 'vo/OutrasInfoVO.php';
+require_once 'vo/GruposVO.php';
+require_once 'vo/EnderecosVO.php';
+require_once 'vo/FiadorVO.php';
+require_once 'vo/InfoFinanceiraVO.php';
+require_once 'vo/OutrasInfoVO.php';
+
+class Clientes extends BaseClass
+{
+	public function excluirCliente($id)
+	{
+		$queryCliente = "DELETE FROM pessoa WHERE codigoPessoa = '$id'";
+		$queryEndereco = "DELETE FROM enderecos WHERE codigocliente = '$id'";
+		$queryFiador = "DELETE FROM fiadores WHERE codigocliente = 0019 '$id'";
+		$queryFinanceiro = "DELETE FROM financeiro WHERE codigocliente = '$id'";
+		$queryOutrasInfo = "DELETE FROM informacoes WHERE codigocliente = '$id'";
+
+		$resultCliente = mysql_query($queryCliente);
+		$resultEndereco = mysql_query($queryEndereco);
+		$resultFiador = mysql_query($queryFiador);
+		$resultFinanceiro = mysql_query($queryFinanceiro);
+		$resultOutrasInfo = mysql_query($queryOutrasInfo);
+			
+		return $ok = 'Sucesso..';
+	}
+	
+	
+	public function cadastrarClientes(ClientesVO $cliente, EnderecosVO $endereco, FiadorVO $fiador, InfoFinanceiraVO $financeiro, OutrasInfoVO $outraInfo)
+	{
+		$dataCadastro = date('Y-m-d h:m:s');
+		
+		$queryVerificarCPF = "SELECT * FROM pessoa WHERE cpf LIKE '$cliente->cpf'";
+		$resultVerificarCPF = mysql_query($queryVerificarCPF);
+		$qtdVerificarCPF = mysql_num_rows($resultVerificarCPF);
+		
+		if($qtdVerificarCPF > 0)
+		{
+			return $erro = 'CPF Cadastrado';
+		}
+		
+		
+		$query1 = "INSERT INTO pessoa (
+			tratamento, sexo, rg, textoNome, contato, cpf, textoEndereco, bairro, codigoCep, textoCidade, ufEstado, 
+			referencia, telefone, telefone2, celular1, celular2, email, dataNascimento, observacao, status, 
+			temAcesso, bloqueado, data_cadastro, departamento, funcao, vencimento, terminocontrato, complemento, cidade, 
+			numero, pais, msn, grupo1, grupo2, grupo3, categoriaCliente, vendedor1, vendedor2, vendedor3, 
+			comprovanterendadoc, comprovanteenderecodoc, rgcontratosocialdoc, cpfcnpjdoc, contratoassinadodoc, fantasia 
+			)VALUES(
+			'$cliente->tratamento',
+			'$cliente->sexo',
+			'$cliente->rg',
+			'$cliente->textoNome',
+			'$cliente->contato',
+			'$cliente->cpf',
+			'$cliente->textoEndereco',
+			'$cliente->bairro',
+			'$cliente->codigoCep',
+			'$cliente->textoCidade',
+			'$cliente->ufEstado',
+			'$cliente->referencia',
+			'$cliente->telefone',
+			'$cliente->telefone2',
+			'$cliente->celular1',
+			'$cliente->celular2',
+			'$cliente->email',
+			'$cliente->dataNascimento',
+			'$cliente->observacao',
+			'ATIVO',
+			'NAO',
+			'NAO',
+			'$dataCadastro',
+			'$cliente->departamento',
+			'$cliente->funcao',
+			'$cliente->vencimento',
+			'$cliente->terminocontrato',
+			'$cliente->complemento',
+			'$cliente->cidade',
+			'$cliente->numero',
+			'$cliente->pais',
+			'$cliente->msn',
+			'$cliente->grupo1',
+			'$cliente->grupo2',
+			'$cliente->grupo3',
+			'$cliente->categoriaCliente',
+			'$cliente->vendedor1',
+			'$cliente->vendedor2',
+			'$cliente->vendedor3',
+			'$cliente->comprovanterendadoc',
+			'$cliente->comprovanteenderecodoc',
+			'$cliente->rgcontratosocialdoc',
+			'$cliente->cpfcnpjdoc',
+			'$cliente->contratoassinadodoc',
+			'$cliente->fantasia'			
+			)
+			";		
+		
+		$result1 = mysql_query($query1);
+		
+		
+		//Cadastrar Endereco
+		$query2 = "INSERT INTO enderecos (
+		codigocliente ,cepentrega ,enderecoentrega ,numeroentrega ,complementoentrega ,	bairroentrega ,cidadeentrega ,
+		ufentrega , paisentrega , referenciaEntrega ,cepcobranca ,enderecocobranca ,numerocobranca ,complementocobranca ,
+		bairrocobranca ,cidadecobranca ,ufcobranca ,paiscobranca ,referenciaCobranca ,observacoes
+		)VALUES (
+		'$cliente->codigoPessoa', '$endereco->cepentrega', '$endereco->enderecoentrega', '$endereco->numeroentrega', '$endereco->complementoentrega', 
+		'$endereco->bairroentrega', '$endereco->cidadeentrega', '$endereco->ufentrega', '$endereco->paisentrega', '$endereco->referenciaEntrega', 
+		'$endereco->cepcobranca', '$endereco->enderecocobranca', '$endereco->numerocobranca', '$endereco->complementocobranca', 
+		'$endereco->bairrocobranca' , '$endereco->cidadecobranca' , '$endereco->ufcobranca' , '$endereco->paiscobranca' , '$endereco->referenciaCobranca','$endereco->observacoes')";
+		
+		$result2 = mysql_query($query2);
+		
+		$codigoCliente = $cliente->codigoPessoa;
+		
+		$queryVerificarEndereco = "SELECT * FROM pessoa WHERE codigoPessoa = '$codigoCliente'";
+		$resultVerificarEndereco = mysql_query($queryVerificarEndereco);
+		$rowVerificarEndereco = mysql_fetch_assoc($resultVerificarEndereco);
+		
+		$cepCliente = $rowVerificarEndereco['codigoCep'];
+		$cepEntrega = $endereco->cepentrega;
+		$cepCobranca = $endereco->cepcobranca;
+		$cepFiador = $fiador->cepfiador;
+		
+		$codigo = "";
+		
+		if($cepCliente == $cepEntrega)
+		{
+			$codigo = "1";
+		}
+		if($cepCliente == $cepCobranca)
+		{
+			$codigo = "1";
+		}
+		if($cepCliente == $cepFiador)
+		{
+			$codigo = "1";
+		}
+		
+		$queryCombo = "INSERT INTO combo_enderecos (codCliente ,idCBEnderecoCobranca ,idCBEnderecoEntrega ,idCBEnderecoFiador)
+VALUES ('$codigoCliente', '1', '1', '1')";
+		$resultCombo = mysql_query($queryCombo);
+		
+		
+		
+		
+		//CADASTRO FIADOR
+		
+		$cpfFiador0 = str_replace('.', '', $fiador->cpfFiador);
+		$cpfFiador1 = str_replace('-', '', $fiador->cpfFiador);
+		
+		$dataNascimentoFiador = str_replace('-', '', $fiador->cpfFiador);
+		
+		$queryFiador = "INSERT INTO fiadores (
+			codigocliente ,cpfFiador ,rgfiador ,tratamentofiador ,nomefiador ,datanascimentofiador ,cepfiador ,enderecofiador ,
+			numerofiador ,complementofiador ,bairrofiador ,cidadefiador ,uffiador ,paisfiador ,referenciafiador ,
+			telefoneresidencialfiador ,telefonecomercialfiador ,celular1fiador ,celular2fiador ,emailfiador ,msnfiador
+			)VALUES(
+			'$codigoCliente', '$fiador->cpfFiador', '$fiador->rgfiador', '$fiador->tratamentofiador', '$fiador->nomefiador', 
+			'$fiador->datanascimentofiador', '$fiador->cepfiador', '$fiador->enderecofiador', '$fiador->numerofiador', '$fiador->complementofiador', 
+			'$fiador->bairrofiador', '$fiador->cidadefiador', '$fiador->uffiador', '$fiador->paisfiador', '$fiador->referenciafiador' , 
+			'$fiador->telefoneresidencialfiador' , '$fiador->telefonecomercialfiador' , '$fiador->celular1fiador' , '$fiador->celular2fiador', 
+			'$fiador->emailfiador' ,'$fiador->msnfiador')";
+		
+		$resultFiador = mysql_query($queryFiador);
+		
+		
+		
+		//CADASTRO FINANCEIRO
+		$queryFinanceiro = "INSERT INTO financeiro (
+		codigocliente, siatuacaospc, ultimaconsultaspc, situacaoserasa, ultimaconsultaserasa, naturalidade, nacionalidade, residencia, temporesidencia, estadocivil, 
+		nfilhos, valoraluguel, conjuge, nomepai, nomemae, empresatrabalha, dataadmissao, carteiraprofissional, profissao, cargo, cepempresa, enderecoempresa, numeroempresa, 
+		complementoempresa, bairroempresa, cidadeempresa, ufempresa, paisempresa, refenciaempresa, referenciacomercial1, refTelefone1, refContato1, referenciacomercial2, 
+		refTelefone2, refContato2, referenciacomercial3, refTelefone3, refContato3, banco, agencia, fone, dataabertura, rendamensal, limitecredito, saldolimitecredito, 
+		valorreceber, valoratraso
+		) VALUES (
+		'$codigoCliente', '$financeiro->siatuacaospc', '$financeiro->ultimaconsultaspc', '$financeiro->situacaoserasa', '$financeiro->ultimaconsultaserasa', '$financeiro->naturalidade', 
+		'$financeiro->nacionalidade', '$financeiro->residencia', '$financeiro->temporesidencia', '$financeiro->estadocivil', '$financeiro->nfilhos', '$financeiro->valoraluguel', 
+		'$financeiro->conjuge', '$financeiro->nomepai', '$financeiro->nomemae', '$financeiro->empresatrabalha', '$financeiro->dataadmissao','$financeiro->carteiraprofissional','$financeiro->profissao', 
+		'$financeiro->cargo', '$financeiro->cepempresa', '$financeiro->empresatrabalha', '$financeiro->numeroempresa', '$financeiro->complementoempresa', '$financeiro->bairroempresa', 
+		'$financeiro->cidadeempresa', '$financeiro->ufempresa', '$financeiro->paisempresa', '$financeiro->refenciaempresa', '$financeiro->referenciacomercial1', '$financeiro->refTelefone1', 
+		'$financeiro->refContato1', '$financeiro->referenciacomercial2', '$financeiro->refTelefone2', '$financeiro->refContato2', '$financeiro->referenciacomercial3', '$financeiro->refTelefone3', 
+		'$financeiro->refContato3', '$financeiro->banco', '$financeiro->agencia', '$financeiro->fone', '$financeiro->dataabertura', '$financeiro->rendamensal', '$financeiro->limitecredito', 
+		'$financeiro->saldolimitecredito', '$financeiro->valorreceber', '$financeiro->valoratraso')";
+			
+		
+		$resultFinanceiro = mysql_query($queryFinanceiro);
+		
+		$queryInfo = "INSERT INTO informacoes (
+		codigocliente ,ranking ,classificacao ,ncompras ,acumulado ,ultimacompra ,transportadorapadrao ,formapagamentopadrao ,operacoapadraovendas ,tabelapreco ,contabancaria ,
+		contapadraolacamentocaixacontapadraolacamentocaixa ,loginlojavirtual ,precoslojavirtual ,comprovanterendadoc ,comprovanteenderecodoc ,rgcontratosocialdoc ,cpfcnpjdoc ,
+		contratoassinadodoc
+		)VALUES (
+		'$codigoCliente', '00', '00', '00', '00', '00', '00', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0')";
+		
+		$resultInfo = mysql_query($queryInfo);
+		
+		
+		
+		return $ok = 'Sucesso..';
+	}
+	
+	public function editarClientes(ClientesVO $cliente, EnderecosVO $endereco, FiadorVO $fiador, InfoFinanceiraVO $financeiro, OutrasInfoVO $outraInfo)
+	{
+		$dataCadastro = date('Y-m-d h:m:s');
+		
+		$query1 = "UPDATE pessoa 
+			SET tratamento='$cliente->tratamento',sexo='$cliente->sexo', rg='$cliente->rg', textoNome='$cliente->textoNome', contato='$cliente->contato', cpf='$cliente->cpf', 
+			textoEndereco='$cliente->textoEndereco', bairro='$cliente->bairro', codigoCep='$cliente->codigoCep', textoCidade='$cliente->textoCidade', ufEstado='$cliente->ufEstado', 
+			referencia='$cliente->referencia', telefone='$cliente->telefone', telefone2='$cliente->telefone2', celular1='$cliente->celular1', celular2='$cliente->celular2', 
+			email='$cliente->email', dataNascimento='$cliente->dataNascimento', observacao='$cliente->observacao', status='$cliente->status', temAcesso='$cliente->temAcesso', 
+			bloqueado='$cliente->bloqueado', data_cadastro='$cliente->data_cadastro', departamento='$cliente->departamento', funcao='$cliente->funcao', vencimento='$cliente->vencimento', 
+			terminocontrato='$cliente->terminocontrato', complemento='$cliente->complemento', cidade='$cliente->cidade',numero='$cliente->numero', pais='$cliente->pais', 
+			msn='$cliente->msn', grupo1='$cliente->grupo1', grupo2='$cliente->grupo2', grupo3='$cliente->grupo3', categoriaCliente='$cliente->categoriaCliente', vendedor1='$cliente->vendedor1', 
+			vendedor2='$cliente->vendedor2', vendedor3='$cliente->vendedor3',comprovanterendadoc='$cliente->comprovanterendadoc', comprovanteenderecodoc='$cliente->comprovanteenderecodoc', 
+			rgcontratosocialdoc='$cliente->rgcontratosocialdoc', cpfcnpjdoc='$cliente->cpfcnpjdoc', contratoassinadodoc='$cliente->contratoassinadodoc', fantasia='$cliente->fantasia' WHERE codigoPessoa = '$cliente->codigoPessoa'";		
+		
+		$result1 = mysql_query($query1);
+		
+		
+		//Cadastrar Endereco
+		$query2 = "UPDATE enderecos 
+		SET cepentrega='$endereco->cepentrega' ,enderecoentrega='$endereco->enderecoentrega' ,numeroentrega='$endereco->numeroentrega' ,complementoentrega='$endereco->complementoentrega',
+		bairroentrega='$endereco->bairroentrega',cidadeentrega='$endereco->cidadeentrega',ufentrega='$endereco->ufentrega',paisentrega='$endereco->paisentrega',
+		referenciaEntrega='$endereco->referenciaEntrega',cepcobranca='$endereco->cepcobranca',enderecocobranca='$endereco->enderecocobranca',numerocobranca='$endereco->numerocobranca',
+		complementocobranca='$endereco->complementocobranca',bairrocobranca='$endereco->bairrocobranca',cidadecobranca='$endereco->cidadecobranca',ufcobranca='$endereco->ufcobranca',
+		paiscobranca='$endereco->paiscobranca', referenciaCobranca='$endereco->referenciaCobranca',observacoes='$endereco->observacoes' WHERE codigocliente='$cliente->codigoPessoa'";
+		
+		$result2 = mysql_query($query2);
+		
+		$codigoCliente = $cliente->codigoPessoa;
+		
+		$queryVerificarEndereco = "SELECT * FROM pessoa WHERE codigoPessoa = '$codigoCliente'";
+		$resultVerificarEndereco = mysql_query($queryVerificarEndereco);
+		$rowVerificarEndereco = mysql_fetch_assoc($resultVerificarEndereco);
+		
+		$cepCliente = $rowVerificarEndereco['codigoCep'];
+		$cepEntrega = $endereco->cepentrega;
+		$cepCobranca = $endereco->cepcobranca;
+		$cepFiador = $fiador->cepfiador;
+		
+		$codigo = "";
+		
+		if($cepCliente == $cepEntrega)
+		{
+			$codigo = "1";
+		}
+		if($cepCliente == $cepCobranca)
+		{
+			$codigo = "1";
+		}
+		if($cepCliente == $cepFiador)
+		{
+			$codigo = "1";
+		}
+		
+		$queryCombo = "UPDATE combo_enderecos SET codCliente='$cliente->codigoPessoa' ,idCBEnderecoCobranca='$endereco->idCBEnderecoCobranca' ,idCBEnderecoEntrega='$endereco->idCBEnderecoEntrega' ,idCBEnderecoFiador='$endereco->idCBEnderecoFiador' WHERE codCliente='$cliente->codigoPessoa'";
+		$resultCombo = mysql_query($queryCombo);
+		
+		
+		
+		
+		//CADASTRO FIADOR
+		
+		$cpfFiador0 = str_replace('.', '', $fiador->cpfFiador);
+		$cpfFiador1 = str_replace('-', '', $fiador->cpfFiador);
+		
+		$dataNascimentoFiador = str_replace('-', '', $fiador->cpfFiador);
+		
+		$queryFiador = "UPDATE fiadores SET 
+			cpfFiador='$fiador->cpfFiador',rgfiador='$fiador->rgfiador',tratamentofiador='$fiador->tratamentofiador',nomefiador='$fiador->nomefiador',
+			datanascimentofiador='$fiador->datanascimentofiador',cepfiador='$fiador->cepfiador',enderecofiador='$fiador->enderecofiador',numerofiador='$fiador->nomefiador',
+			complementofiador='$fiador->complementofiador',bairrofiador='$fiador->bairrofiador',cidadefiador='$fiador->cidadefiador',uffiador='$fiador->uffiador',
+			paisfiador='$fiador->paisfiador',referenciafiador='$fiador->referenciafiador',telefoneresidencialfiador='$fiador->telefonecomercialfiador',
+			telefonecomercialfiador='$fiador->telefonecomercialfiador',celular1fiador='$fiador->celular1fiador',celular2fiador='$fiador->celular2fiador',
+			emailfiador='$fiador->emailfiador',msnfiador='$fiador->msnfiador' WHERE codigocliente='$cliente->codigoPessoa'";
+		
+		$resultFiador = mysql_query($queryFiador);
+		
+		
+		
+		//CADASTRO FINANCEIRO
+		$queryFinanceiro = "UPDATE financeiro SET
+		siatuacaospc='$financeiro->siatuacaospc', ultimaconsultaspc='$financeiro->ultimaconsultaspc', situacaoserasa='$financeiro->situacaoserasa', ultimaconsultaserasa='$financeiro->ultimaconsultaserasa', 
+		naturalidade='$financeiro->naturalidade',nacionalidade='$financeiro->nacionalidade',residencia='$financeiro->residencia', temporesidencia='$financeiro->temporesidencia', 
+		estadocivil='$financeiro->estadocivil',nfilhos='$financeiro->nfilhos', valoraluguel='$financeiro->valoraluguel',conjuge='$financeiro->conjuge', nomepai='$financeiro->nomepai', 
+		nomemae='$financeiro->nomemae',empresatrabalha='$financeiro->empresatrabalha',dataadmissao='$financeiro->dataadmissao',carteiraprofissional='$financeiro->carteiraprofissional', 
+		profissao='$financeiro->profissao',cargo='$financeiro->cargo',cepempresa='$financeiro->cepempresa',enderecoempresa='$financeiro->enderecoempresa',numeroempresa='$financeiro->numeroempresa', 
+		complementoempresa='$financeiro->complementoempresa',bairroempresa='$financeiro->bairroempresa',cidadeempresa='$financeiro->cidadeempresa',ufempresa='$financeiro->ufempresa', 
+		paisempresa='$financeiro->paisempresa',refenciaempresa='$financeiro->refenciaempresa',referenciacomercial1='$financeiro->referenciacomercial1', refTelefone1='$financeiro->refTelefone1', 
+		refContato1='$financeiro->refContato1',referenciacomercial2='$financeiro->referenciacomercial1',refTelefone2='$financeiro->refTelefone2', refContato2='$financeiro->refContato2', referenciacomercial3='$financeiro->referenciacomercial3', 
+		refTelefone3='$financeiro->refTelefone3', refContato3='$financeiro->refContato3', banco='$financeiro->banco', agencia='$financeiro->agencia', fone='$financeiro->fone', 
+		dataabertura='$financeiro->dataabertura',rendamensal='$financeiro->rendamensal', limitecredito='$financeiro->limitecredito', saldolimitecredito='$financeiro->saldolimitecredito', 
+		valorreceber='$financeiro->valorreceber', valoratraso='$financeiro->valoratraso' WHERE codigocliente='$cliente->codigoPessoa' ";
+		
+		$resultFinanceiro = mysql_query($queryFinanceiro);
+		
+		//$queryInfo = "UPDATE informacoes SET 
+		//ranking='$outraInfo->ranking',classificacao='$outraInfo->classificacao' ,ncompras='$outraInfo->ncompras' ,acumulado='$outraInfo->acumulado' ,ultimacompra='$outraInfo->ultimacompra' ,transportadorapadrao='$outraInfo->transportadorapadrao' ,
+		//formapagamentopadrao='$outraInfo->formapagamentopadrao' ,operacoapadraovendas='$outraInfo->' ,tabelapreco='$outraInfo->' ,contabancaria='$outraInfo->' ,contapadraolacamentocaixacontapadraolacamentocaixa='$outraInfo->' ,
+		//loginlojavirtual='$outraInfo->loginlojavirtual' ,precoslojavirtual='$outraInfo->precoslojavirtual' ,comprovanterendadoc='$outraInfo->comprovanterendadoc',comprovanteenderecodoc='$outraInfo->comprovanteenderecodoc' ,rgcontratosocialdoc='$outraInfo->rgcontratosocialdoc' ,
+		//cpfcnpjdoc ='$outraInfo->cpfcnpjdoc',contratoassinadodoc='$outraInfo->contratoassinadodoc' WHERE codigocliente='$cliente->codigoPessoa'";
+		
+		//$resultInfo = mysql_query($queryInfo);
+		
+		
+		
+		return $ok = 'Sucesso..';
+	}
+	
+	
+	
+	public function listarClientes()
+	{
+		$query = "select *,  UPPER(textoNome) as TEXTONOME from pessoa order by textoNome";
+		$result = mysql_query($query);
+		
+		$qtd = mysql_num_rows($result);
+		
+		while ($row = mysql_fetch_assoc($result)) {
+    		
+			$cliente = new ClientesVO();
+							
+			$cliente->codigoPessoa = $row['codigoPessoa'];
+			$cliente->tratamento = $row['tratamento'];
+			$cliente->contato = $row['contato'];
+			$cliente->sexo = $row['sexo'];
+			$cliente->rg = $row['rg'];		
+			$cliente->textoNome = strtoupper(trim($row['textoNome']));
+			$cliente->cpf = $row['cpf'];
+			$cliente->textoEndereco = $row['textoEndereco'];
+			$cliente->bairro = $row['bairro'];	
+			$cliente->codigoCep = $row['codigoCep'];
+			$cliente->textoCidade = $row['textoCidade'];
+			$cliente->ufEstado = $row['ufEstado'];
+			$cliente->referencia = $row['referencia'];	
+			$cliente->telefone = str_replace(" ","",$row['telefone']);	
+			$cliente->telefone2 = str_replace(" ","",$row['telefone2']);
+			$cliente->celular1 = str_replace(" ","",$row['celular1']);
+			$cliente->celular2 = str_replace(" ","",$row['celular2']);
+			$cliente->email = $row['email'];
+			$cliente->dataNascimento = str_replace('/', '', $row['dataNascimento']);
+			$cliente->acesso = $row['acesso'];
+			$cliente->regime = $row['regime'];
+			$cliente->material = $row['material'];
+			$cliente->plano = $row['plano'];
+			$cliente->loginCliente = $row['loginCliente'];
+			$cliente->ipCliente = $row['ipCliente'];
+			$cliente->macCliente = $row['macCliente'];
+			$cliente->planoCliente = $row['planoCliente'];
+			$cliente->nmaquinas = $row['nmaquinas'];
+			$cliente->antena = $row['antena'];
+			$cliente->vencContrato = $row['vencContrato'];
+			$cliente->observacao = $row['observacao'];
+			$cliente->docCPF = $row['docCPF'];
+			$cliente->docRG = $row['docRG'];
+			$cliente->docCOM = $row['docCOM'];
+			$cliente->Contrato = $row['Contrato'];
+			$cliente->grupo = $row['grupo'];
+			$cliente->fiador = $row['fiador'];
+			$cliente->cpfFiador = $row['cpfFiador'];
+			$cliente->status = $row['status'];
+			$cliente->temAcesso = $row['temAcesso'];
+			$cliente->bloqueado = $row['bloqueado'];
+			$cliente->data_cadastro = $row['data_cadastro'];
+			$cliente->departamento = $row['departamento'];
+			$cliente->funcao = $row['funcao'];
+			$cliente->vencimento = $row['vencimento'];
+			$cliente->terminocontrato = $row['terminocontrato'];
+			$cliente->complemento = $row['complemento'];
+			$cliente->cidade = $row['cidade'];
+			$cliente->numero = $row['numero'];
+			$cliente->pais = $row['pais'];
+			$cliente->msn = $row['msn'];
+			$cliente->grupo1 = $row['grupo1'];
+			$cliente->grupo2 = $row['grupo2'];	
+			$cliente->grupo3 = $row['grupo3'];	
+			$cliente->grupo4 = $row['grupo4'];	
+			$cliente->categoriaCliente = $row['categoriaCliente'];	
+			$cliente->vendedor1 = $row['vendedor1'];	
+			$cliente->vendedor2 = $row['vendedor2'];	
+			$cliente->vendedor3 = $row['vendedor3'];	
+			$cliente->vendedor4 = $row['vendedor4'];	
+			$cliente->ranking = $row['ranking'];	
+			$cliente->classificacao = $row['classificacao'];	
+			$cliente->ncompras = $row['ncompras'];	
+			$cliente->acumulado = $row['acumulado'];	
+			$cliente->transportadorapadrao = $row['transportadorapadrao'];	
+			$cliente->operacoapadraovendas = $row['operacoapadraovendas'];	
+			$cliente->tabelapreco = $row['tabelapreco'];	
+			$cliente->contabancaria = $row['contabancaria'];	
+			$cliente->contapadraolacamentocaixacontapadraolacamentocaixa = $row['contapadraolacamentocaixacontapadraolacamentocaixa'];	
+			$cliente->loginlojavirtual = $row['loginlojavirtual'];	
+			$cliente->precoslojavirtual = $row['precoslojavirtual'];	
+			$cliente->comprovanterendadoc = $row['comprovanterendadoc'];	
+			$cliente->comprovanteenderecodoc = $row['comprovanteenderecodoc'];	
+			$cliente->rgcontratosocialdoc = $row['rgcontratosocialdoc'];	
+			$cliente->cpfcnpjdoc = $row['cpfcnpjdoc'];	
+			$cliente->contratoassinadodoc = $row['contratoassinadodoc'];
+			$cliente->fantasia = $row['fantasia'];	
+			$cliente->tipoContrato = $row['tipoContrato'];		
+	
+			
+			$clientes[] = $cliente;
+		}
+		
+		
+		return $clientes;
+		
+	}
+	public function pegarCodigoCliente($nome)
+	{
+		$query = "select * from pessoa WHERE textoNome LIKE '%$nome%' order by textoNome";
+		$result = mysql_query($query);
+		$row = mysql_fetch_assoc($result);
+		
+		$codigoCliente = $row['codigoPessoa'];
+			
+		return $codigoCliente;
+		
+	}
+	
+	public function selecionarCliente($id)
+	{
+		$query = "select *,  UPPER(textoNome) as TEXTONOME from pessoa where codigoPessoa = '$id' order by textoNome";
+		$result = mysql_query($query);
+		$row = mysql_fetch_assoc($result);
+		mysql_free_result($result);		
+    		
+			$cliente = new ClientesVO();
+							
+			$cliente->codigoPessoa = $row['codigoPessoa'];
+			$cliente->tratamento = $row['tratamento'];
+			$cliente->sexo = $row['sexo'];
+			$cliente->rg = $row['rg'];		
+			$cliente->textoNome = $row['textoNome'];
+			$cliente->contato = $row['contato'];
+			$cliente->cpf = $row['cpf'];
+			$cliente->textoEndereco = $row['textoEndereco'];
+			$cliente->bairro = $row['bairro'];	
+			$cliente->codigoCep = $row['codigoCep'];
+			$cliente->textoCidade = $row['textoCidade'];
+			$cliente->ufEstado = $row['ufEstado'];
+			$cliente->referencia = $row['referencia'];	
+			$cliente->telefone = str_replace(" ","",$row['telefone']);	
+			$cliente->telefone2 = str_replace(" ","",$row['telefone2']);
+			$cliente->celular1 = str_replace(" ","",$row['celular1']);
+			$cliente->celular2 = str_replace(" ","",$row['celular2']);
+			$cliente->email = $row['email'];
+			$cliente->dataNascimento = str_replace('/', '', $row['dataNascimento']);
+			$cliente->acesso = $row['acesso'];
+			$cliente->regime = $row['regime'];
+			$cliente->material = $row['material'];
+			$cliente->plano = $row['plano'];
+			$cliente->loginCliente = $row['loginCliente'];
+			$cliente->ipCliente = $row['ipCliente'];
+			$cliente->macCliente = $row['macCliente'];
+			$cliente->planoCliente = $row['planoCliente'];
+			$cliente->nmaquinas = $row['nmaquinas'];
+			$cliente->antena = $row['antena'];
+			$cliente->vencContrato = $row['vencContrato'];
+			$cliente->observacao = $row['observacao'];
+			$cliente->docCPF = $row['docCPF'];
+			$cliente->docRG = $row['docRG'];
+			$cliente->docCOM = $row['docCOM'];
+			$cliente->Contrato = $row['Contrato'];
+			$cliente->grupo = $row['grupo'];
+			$cliente->fiador = $row['fiador'];
+			$cliente->cpfFiador = $row['cpfFiador'];
+			$cliente->status = $row['status'];
+			$cliente->temAcesso = $row['temAcesso'];
+			$cliente->bloqueado = $row['bloqueado'];
+			$cliente->data_cadastro = $row['data_cadastro'];
+			$cliente->departamento = $row['departamento'];
+			$cliente->funcao = $row['funcao'];
+			$cliente->vencimento = $row['vencimento'];
+			$cliente->terminocontrato = $row['terminocontrato'];
+			$cliente->complemento = $row['complemento'];
+			$cliente->cidade = $row['cidade'];
+			$cliente->numero = $row['numero'];
+			$cliente->pais = $row['pais'];
+			$cliente->msn = $row['msn'];
+			$cliente->grupo1 = $row['grupo1'];
+			$cliente->grupo2 = $row['grupo2'];	
+			$cliente->grupo3 = $row['grupo3'];	
+			$cliente->grupo4 = $row['grupo4'];	
+			$cliente->categoriaCliente = $row['categoriaCliente'];	
+			$cliente->vendedor1 = $row['vendedor1'];	
+			$cliente->vendedor2 = $row['vendedor2'];	
+			$cliente->vendedor3 = $row['vendedor3'];	
+			$cliente->vendedor4 = $row['vendedor4'];	
+			$cliente->ranking = $row['ranking'];	
+			$cliente->classificacao = $row['classificacao'];	
+			$cliente->ncompras = $row['ncompras'];	
+			$cliente->acumulado = $row['acumulado'];	
+			$cliente->transportadorapadrao = $row['transportadorapadrao'];	
+			$cliente->operacoapadraovendas = $row['operacoapadraovendas'];	
+			$cliente->tabelapreco = $row['tabelapreco'];	
+			$cliente->contabancaria = $row['contabancaria'];	
+			$cliente->contapadraolacamentocaixacontapadraolacamentocaixa = $row['contapadraolacamentocaixacontapadraolacamentocaixa'];	
+			$cliente->loginlojavirtual = $row['loginlojavirtual'];	
+			$cliente->precoslojavirtual = $row['precoslojavirtual'];	
+			$cliente->comprovanterendadoc = $row['comprovanterendadoc'];	
+			$cliente->comprovanteenderecodoc = $row['comprovanteenderecodoc'];	
+			$cliente->rgcontratosocialdoc = $row['rgcontratosocialdoc'];	
+			$cliente->cpfcnpjdoc = $row['cpfcnpjdoc'];	
+			$cliente->contratoassinadodoc = $row['contratoassinadodoc'];
+			$cliente->fantasia = $row['fantasia'];	
+			$cliente->tipoContrato = $row['tipoContrato'];		
+	
+			
+			return $cliente;
+		
+	}
+	public function updateMateriais()
+	{
+		$query = "select codigoPessoa, material from pessoa WHERE material LIKE 'CABO PAR-TRANÃ‡ADO UTP'";
+		$result = mysql_query($query) or die (mysql_error());
+		
+		
+		
+		
+		while ($row = mysql_fetch_assoc($result)) {
+    		
+			//Variaveis
+			echo $idCliente = $row['codigoPessoa'];
+			inserirMateriais($idCliente);
+			
+		}
+		
+		
+		
+		
+		
+	}
+	public function inserirMateriais($idCliente)
+	{
+		$query = "INSERT INTO radius.produtos_clientes (id, id_cliente, id_produto) VALUES (NULL, '$idCliente', '22')";
+		$result = mysql_query($query);
+	}
+	public function pegarTerminoContrato($nomeCliente)
+	{
+		$query_codigo = "SELECT * FROM pessoa WHERE textoNome LIKE '$nomeCliente'";
+		$result_codigo = mysql_query($query_codigo);
+		$row_codigo = mysql_fetch_assoc($result_codigo);
+		
+		$codigoCliente = $row_codigo['codigoPessoa'];
+		$ano = date('y');
+		$ndocumento = $codigoCliente.'/'.$ano.'/12';
+		
+		
+		$query = "SELECT * FROM contasapagar WHERE cliente LIKE '$nomeCliente' AND ndocumento = '$ndocumento' ORDER BY id DESC LIMIT 0 , 1";
+		$result = mysql_query($query);
+		$row = mysql_fetch_assoc($result);
+		$qtd = mysql_num_rows($result);
+		
+		if($qtd > 0)
+		{		
+			$ultimaData = $row['vencimento'];
+		
+			
+		}else
+		{
+			$ultimaData = $row_codigo['vencContrato'];	
+		}
+		
+		return $ultimaData;
+		
+	}
+	public function listarEnderecos($codigo)
+		{
+				
+				$query = "SELECT * FROM enderecos WHERE codigocliente = '$codigo'";
+				$result = mysql_query($query);
+				$row = mysql_fetch_assoc($result);
+				
+				$endereco = new EnderecosVO();
+				
+				$endereco->id;
+				$endereco->codigocliente;
+				$endereco->cepentrega;
+				$endereco->enderecoentrega;
+				$endereco->numeroentrega;
+				$endereco->complementoentrega;
+				$endereco->bairroentrega;
+				$endereco->cidadeentrega;
+				$endereco->ufentrega;
+				$endereco->paisentrega;
+				$endereco->referenciaEntrega;
+				$endereco->cepcobranca;
+				$endereco->enderecocobranca;
+				$endereco->numerocobranca;
+				$endereco->complementocobranca;
+				$endereco->bairrocobranca;
+				$endereco->cidadecobranca;
+				$endereco->ufcobranca;
+				$endereco->paiscobranca;
+				$endereco->referenciaCobranca;
+				$endereco->observacoes;
+					
+				return $endereco;	
+			
+		}
+	public function listarInfo($id)
+		{
+				
+				$query = "SELECT * FROM informacoes WHERE codigocliente = '$id'";
+				$result = mysql_query($query);
+				$row = mysql_fetch_assoc($result);
+				
+			
+              		$outrasInfo = new OutrasInfoVO();
+              		
+              		$outrasInfo->id = $row['id'] ;	
+					$outrasInfo->transportadorapadrao = $row['transportadorapadrao'];
+					$outrasInfo->formapagamentopadrao= $row['formapagamentopadrao'];
+					$outrasInfo->operacoapadraovendas= $row['operacoapadraovendas'];
+					$outrasInfo->tabelapreco= $row['tabelapreco'];
+					$outrasInfo->contabancaria= $row['contabancaria'];
+					$outrasInfo->contapadraolacamentocaixa= $row['contapadraolacamentocaixa'];
+					$outrasInfo->loginlojavirtual= $row['loginlojavirtual'];
+					$outrasInfo->precoslojavirtual= $row['precoslojavirtual'];
+					$outrasInfo->ranking= $row['ranking'];
+					$outrasInfo->classificacao= $row['classificacao'];
+					$outrasInfo->ncompras= $row['ncompras'];
+					$outrasInfo->acumulado= $row['acumulado'];
+					$outrasInfo->ultimacompra= $row['ultimacompra'];
+			
+				
+				
+				return $outrasInfo;	
+			
+		}
+	public function pegarCodigoCliente2()
+	{
+		$query = "SHOW TABLE STATUS LIKE 'pessoa'";
+		$result = mysql_query($query);
+		$row = mysql_fetch_assoc($result);	
+                			
+		$codigo = $row["Auto_increment"];
+		
+		//$codigo2 = $codigo+1;
+		
+					
+		return $codigo;	
+	}
+	
+	
+	public function validarCPF($cpf)
+		  {
+		
+		
+	
+		
+		 //Retira ponto hifen e barras
+		$cpf = str_replace(".","", $cpf);
+		$cpf = str_replace("-","", $cpf);
+		$cpf = str_replace("/","", $cpf);
+		
+		//Verifica se ï¿½ CPF ou CNPJ
+		
+		$qtd = mb_strlen($cpf);
+		
+		if($qtd == '11'){
+		
+
+ 		//VERIFICA SE O QUE FOI INFORMADo É NÚMERO
+ 		
+			if(!is_numeric($cpf)) {
+
+				$status = false;
+ 			
+			}else {
+  			
+				//VERIFICA
+			  if( ($cpf == '11111111111') || ($cpf == '22222222222') ||
+			   ($cpf == '33333333333') || ($cpf == '44444444444') ||
+			   ($cpf == '55555555555') || ($cpf == '66666666666') ||
+			   ($cpf == '77777777777') || ($cpf == '88888888888') ||
+			   ($cpf == '99999999999') || ($cpf == '00000000000') ) {
+			   $status = false;
+			  }else {
+			   //PEGA O DIGITO VERIFIACADOR
+   				$dv_informado = substr($cpf, 9,2);
+
+			   for($i=0; $i<=8; $i++) {
+			    	$digito[$i] = substr($cpf, $i,1);
+			   }
+			
+			   //CALCULA O VALOR DO 10ï¿½ DIGITO DE VERIFICAï¿½ï¿½O
+			   $posicao = 10;
+			   $soma = 0;
+
+			   for($i=0; $i<=8; $i++) {
+				    $soma = $soma + $digito[$i] * $posicao;
+				    $posicao = $posicao - 1;
+			   }
+
+   				$digito[9] = $soma % 11;
+
+			   if($digito[9] < 2) {
+			    	$digito[9] = 0;
+			   }else {
+    				$digito[9] = 11 - $digito[9];
+   				}
+
+			   //CALCULA O VALOR DO 11ï¿½ DIGITO DE VERIFICAï¿½ï¿½O
+			   $posicao = 11;
+			   $soma = 0;
+			
+			   for ($i=0; $i<=9; $i++) {
+			    $soma = $soma + $digito[$i] * $posicao;
+			    $posicao = $posicao - 1;
+			   }
+			
+			   $digito[10] = $soma % 11;
+
+			   if ($digito[10] < 2) {
+			    $digito[10] = 0;
+			   }
+			   else {
+			    $digito[10] = 11 - $digito[10];
+  				 }
+
+			  //VERIFICA SE O DV CALCULADO ï¿½ IGUAL AO INFORMADO
+			  $dv = $digito[9] * 10 + $digito[10];
+			  if ($dv != $dv_informado) {
+			   $status = false;
+			  }
+			  else
+			   $status = true;
+			  }//FECHA ELSE
+			  }//FECHA ELSE(is_numeric)
+	
+	return $status;
+	
+		}else{
+			
+	//Pegando Primeiro DV Informado
+		$dvInformado1 = substr($cpf, 12,1);
+		
+		//Pegando Segundo DV Informado
+		$dvInformado2 = substr($cpf, 13,1);
+		
+		//Dividindo Numeros
+		for($i=0; $i<=11; $i++) {
+			$digito[$i] = substr($cpf, $i,1);
+		   }   
+		   
+		   //Multiplicaï¿½ï¿½es
+		   
+		   $r1 = $digito[0] * 5;
+		   $r2 = $digito[1] * 4;
+		   $r3 = $digito[2] * 3;
+		   $r4 = $digito[3] * 2;
+		   $r5 = $digito[4] * 9;
+		   $r6 = $digito[5] * 8;
+		   $r7 = $digito[6] * 7;
+		   $r8 = $digito[7] * 6;
+		   $r9 = $digito[8] * 5;
+		   $r10 = $digito[9] * 4;
+		   $r11 = $digito[10] * 3;
+		   $r12 = $digito[11] * 2;
+		   
+		   //Soma
+		   
+		   $soma = $r1+$r2+$r3+$r4+$r5+$r6+$r7+$r8+$r9+$r10+$r11+$r12;
+		   
+		   //Divisï¿½o
+		   
+		   $soma = $soma % 11;
+		   
+		   if($soma < 2){
+				
+				$soma = 0;
+		   }else{
+			
+				$soma = 11 - $soma;
+					}
+				$dv1 = $soma;
+	
+			if($dv1 == $dvInformado1){
+				
+				//Pegando Segundo DV
+				
+				
+				//Dividindo Numeros
+		for($i=0; $i<=12; $i++) {
+			$digito2[$i] = substr($cpf, $i,1);
+		   }   
+				 //Multiplicaï¿½ï¿½es
+		   
+		   $rr1 = $digito2[0] * 6;
+		   $rr2 = $digito2[1] * 5;
+		   $rr3 = $digito2[2] * 4;
+		   $rr4 = $digito2[3] * 3;
+		   $rr5 = $digito2[4] * 2;
+		   $rr6 = $digito2[5] * 9;
+		   $rr7 = $digito2[6] * 8;
+		   $rr8 = $digito2[7] * 7;
+		   $rr9 = $digito2[8] * 6;
+		   $rr10 = $digito2[9] * 5;
+		   $rr11 = $digito2[10] * 4;
+		   $rr12 = $digito2[11] * 3;
+		   $rr13 = $digito2[12] * 2;
+				
+			//Soma
+		   
+		   $soma2 = $rr1+$rr2+$rr3+$rr4+$rr5+$rr6+$rr7+$rr8+$rr9+$rr10+$rr11+$rr12+$rr13;
+		   
+		    //Divisï¿½o
+		   
+		   $soma2 = $soma2 % 11;
+		   
+		   if($soma2 < 2){
+				
+				$soma2 = 0;
+		   }else{
+			
+				$soma2 = 11 - $soma2;
+					}
+				$dv2 = $soma2;
+				
+				if($dv2 == $dvInformado2){
+				
+				$status = true;
+				}else{
+				$status = 'false2';	
+				}
+				
+			}else{
+				$status = 'false2';	
+			}
+				return $status;
+			
+			
+			
+			
+			}
+				return $sucesso = 'Sucesso';	
+		  }	
+	
+	
+	public function procurarGrupo($id)
+	{
+		$query = "SELECT * FROM grupoclientes WHERE id = '$id'";
+		$result = mysql_query($query);
+		$row = mysql_fetch_assoc($result);
+		
+			$grupo = new GruposVO();
+			$grupo->nome = $row['nome'];
+			$grupo->vendedor = $row['vendedor']; 			
+
+		
+			return  $grupo;
+	}
+	public function procurarCategoria($id)
+	{
+		$query = "SELECT * FROM categoria WHERE id = '$id'";
+		$result = mysql_query($query);
+		$row = mysql_fetch_assoc($result);
+		
+			$categoria = new CategoriaVO();
+			$categoria->nome = $row['nome'];
+					
+
+		
+			return  $categoria;
+	}
+	
+	
+	
+}

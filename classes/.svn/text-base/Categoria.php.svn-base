@@ -1,0 +1,55 @@
+<?php
+
+require_once 'classes/BaseClass.php';
+require_once 'vo/CategoriaVO.php';
+
+
+class Categoria extends BaseClass
+{
+	public function listarCategorias()
+	{
+		$query = "SELECT * FROM categoria";
+		$result = mysql_query($query);
+		
+		
+		
+		while ($row = mysql_fetch_assoc($result)) {
+    		
+			$categoria = new CategoriaVO();
+							
+			$categoria->id = $row['id'];
+			$categoria->nome = $row['nome'];
+			
+			
+			
+			$categorias[] = $categoria;
+		}
+		
+		
+		return $categorias;
+	}
+	public function cadastrarCategorias(CategoriaVO $categoria)
+	{
+		$query = "INSERT INTO categoria (nome)VALUES('$categoria->nome')";
+		$result = mysql_query($query);
+		
+	}
+	public function editarCategorias(CategoriaVO $categoria)
+	{
+		$query = "UPDATE categoria SET nome='$categoria->nome' WHERE id='$categoria->id'";
+		$result = mysql_query($query);
+		
+		
+	
+	}
+	public function excluirCategorias($id)
+	{
+		$query = "DELETE FROM categoria WHERE id='$id'";
+		$result = mysql_query($query);
+		
+		
+		
+		
+	}
+		
+}

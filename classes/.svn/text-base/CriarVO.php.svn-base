@@ -1,0 +1,16 @@
+<?php
+
+require_once 'classes/BaseClass.php';
+
+class CriarVO extends BaseClass
+{
+	public function LerTb($tabela)
+	{
+		$query = "SHOW COLUMNS FROM db_opus.".$tabela."";
+		$result = mysql_query($query);
+
+		while ($row = mysql_fetch_assoc($result)) {
+			echo 'public $'.$row['Field'].';'."<br/>";			
+		}
+	}
+}

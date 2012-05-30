@@ -1,0 +1,407 @@
+K 25
+svn:wc:ra_dav:version-url
+V 42
+/svn/OpusWeb/!svn/ver/477/OpusWeb-PHPv2/vo
+END
+UnidadeProdutoVO.php
+K 25
+svn:wc:ra_dav:version-url
+V 63
+/svn/OpusWeb/!svn/ver/477/OpusWeb-PHPv2/vo/UnidadeProdutoVO.php
+END
+TransportadorasVO.php
+K 25
+svn:wc:ra_dav:version-url
+V 64
+/svn/OpusWeb/!svn/ver/477/OpusWeb-PHPv2/vo/TransportadorasVO.php
+END
+CrmAtrendimentoVO.php
+K 25
+svn:wc:ra_dav:version-url
+V 64
+/svn/OpusWeb/!svn/ver/477/OpusWeb-PHPv2/vo/CrmAtrendimentoVO.php
+END
+GraficoClientesVO.php
+K 25
+svn:wc:ra_dav:version-url
+V 64
+/svn/OpusWeb/!svn/ver/477/OpusWeb-PHPv2/vo/GraficoClientesVO.php
+END
+ProdutoGrpVO.php
+K 25
+svn:wc:ra_dav:version-url
+V 59
+/svn/OpusWeb/!svn/ver/477/OpusWeb-PHPv2/vo/ProdutoGrpVO.php
+END
+MovimentoEntCabecalhoVO.php
+K 25
+svn:wc:ra_dav:version-url
+V 70
+/svn/OpusWeb/!svn/ver/477/OpusWeb-PHPv2/vo/MovimentoEntCabecalhoVO.php
+END
+EnderecosVO.php
+K 25
+svn:wc:ra_dav:version-url
+V 58
+/svn/OpusWeb/!svn/ver/477/OpusWeb-PHPv2/vo/EnderecosVO.php
+END
+InfoFinanceiraVO.php
+K 25
+svn:wc:ra_dav:version-url
+V 63
+/svn/OpusWeb/!svn/ver/477/OpusWeb-PHPv2/vo/InfoFinanceiraVO.php
+END
+AcessoVO.php
+K 25
+svn:wc:ra_dav:version-url
+V 55
+/svn/OpusWeb/!svn/ver/477/OpusWeb-PHPv2/vo/AcessoVO.php
+END
+ProdutosVO.php
+K 25
+svn:wc:ra_dav:version-url
+V 57
+/svn/OpusWeb/!svn/ver/477/OpusWeb-PHPv2/vo/ProdutosVO.php
+END
+ContasReceberVO.php
+K 25
+svn:wc:ra_dav:version-url
+V 62
+/svn/OpusWeb/!svn/ver/477/OpusWeb-PHPv2/vo/ContasReceberVO.php
+END
+EstoqueVO.php
+K 25
+svn:wc:ra_dav:version-url
+V 56
+/svn/OpusWeb/!svn/ver/477/OpusWeb-PHPv2/vo/EstoqueVO.php
+END
+motivoCancelamentoVO.php
+K 25
+svn:wc:ra_dav:version-url
+V 67
+/svn/OpusWeb/!svn/ver/477/OpusWeb-PHPv2/vo/motivoCancelamentoVO.php
+END
+UsuarioVO.php
+K 25
+svn:wc:ra_dav:version-url
+V 56
+/svn/OpusWeb/!svn/ver/477/OpusWeb-PHPv2/vo/UsuarioVO.php
+END
+EcfVendaCabecalhoVO.php
+K 25
+svn:wc:ra_dav:version-url
+V 66
+/svn/OpusWeb/!svn/ver/477/OpusWeb-PHPv2/vo/EcfVendaCabecalhoVO.php
+END
+CategoriaVO.php
+K 25
+svn:wc:ra_dav:version-url
+V 58
+/svn/OpusWeb/!svn/ver/477/OpusWeb-PHPv2/vo/CategoriaVO.php
+END
+AniversariantesVO.php
+K 25
+svn:wc:ra_dav:version-url
+V 64
+/svn/OpusWeb/!svn/ver/477/OpusWeb-PHPv2/vo/AniversariantesVO.php
+END
+tipoProblema_OSE.php
+K 25
+svn:wc:ra_dav:version-url
+V 63
+/svn/OpusWeb/!svn/ver/477/OpusWeb-PHPv2/vo/tipoProblema_OSE.php
+END
+EndCobrancaVO.php
+K 25
+svn:wc:ra_dav:version-url
+V 60
+/svn/OpusWeb/!svn/ver/477/OpusWeb-PHPv2/vo/EndCobrancaVO.php
+END
+tipoProblema_OSI.php
+K 25
+svn:wc:ra_dav:version-url
+V 63
+/svn/OpusWeb/!svn/ver/477/OpusWeb-PHPv2/vo/tipoProblema_OSI.php
+END
+FiadorVO.php
+K 25
+svn:wc:ra_dav:version-url
+V 55
+/svn/OpusWeb/!svn/ver/477/OpusWeb-PHPv2/vo/FiadorVO.php
+END
+ClientesVO.php
+K 25
+svn:wc:ra_dav:version-url
+V 57
+/svn/OpusWeb/!svn/ver/477/OpusWeb-PHPv2/vo/ClientesVO.php
+END
+Assinaturas_CtvVO.php
+K 25
+svn:wc:ra_dav:version-url
+V 64
+/svn/OpusWeb/!svn/ver/477/OpusWeb-PHPv2/vo/Assinaturas_CtvVO.php
+END
+DocClienteVO.php
+K 25
+svn:wc:ra_dav:version-url
+V 59
+/svn/OpusWeb/!svn/ver/477/OpusWeb-PHPv2/vo/DocClienteVO.php
+END
+ContratosAcessoVO.php
+K 25
+svn:wc:ra_dav:version-url
+V 64
+/svn/OpusWeb/!svn/ver/477/OpusWeb-PHPv2/vo/ContratosAcessoVO.php
+END
+BaseVO.php
+K 25
+svn:wc:ra_dav:version-url
+V 53
+/svn/OpusWeb/!svn/ver/477/OpusWeb-PHPv2/vo/BaseVO.php
+END
+EndEntregaVO.php
+K 25
+svn:wc:ra_dav:version-url
+V 59
+/svn/OpusWeb/!svn/ver/477/OpusWeb-PHPv2/vo/EndEntregaVO.php
+END
+EnderecosEntregaVO.php
+K 25
+svn:wc:ra_dav:version-url
+V 65
+/svn/OpusWeb/!svn/ver/477/OpusWeb-PHPv2/vo/EnderecosEntregaVO.php
+END
+ChamadosVO.php
+K 25
+svn:wc:ra_dav:version-url
+V 57
+/svn/OpusWeb/!svn/ver/477/OpusWeb-PHPv2/vo/ChamadosVO.php
+END
+AcessoClienteVO.php
+K 25
+svn:wc:ra_dav:version-url
+V 62
+/svn/OpusWeb/!svn/ver/477/OpusWeb-PHPv2/vo/AcessoClienteVO.php
+END
+FormasPgtoVO.php
+K 25
+svn:wc:ra_dav:version-url
+V 59
+/svn/OpusWeb/!svn/ver/477/OpusWeb-PHPv2/vo/FormasPgtoVO.php
+END
+ServidoresVO.php
+K 25
+svn:wc:ra_dav:version-url
+V 59
+/svn/OpusWeb/!svn/ver/477/OpusWeb-PHPv2/vo/ServidoresVO.php
+END
+oseVO.php
+K 25
+svn:wc:ra_dav:version-url
+V 52
+/svn/OpusWeb/!svn/ver/477/OpusWeb-PHPv2/vo/oseVO.php
+END
+LogOpusVO.php
+K 25
+svn:wc:ra_dav:version-url
+V 56
+/svn/OpusWeb/!svn/ver/477/OpusWeb-PHPv2/vo/LogOpusVO.php
+END
+OutrasInfoVO.php
+K 25
+svn:wc:ra_dav:version-url
+V 59
+/svn/OpusWeb/!svn/ver/477/OpusWeb-PHPv2/vo/OutrasInfoVO.php
+END
+manutencaoVO.php
+K 25
+svn:wc:ra_dav:version-url
+V 59
+/svn/OpusWeb/!svn/ver/477/OpusWeb-PHPv2/vo/manutencaoVO.php
+END
+PlanosAcessoVO.php
+K 25
+svn:wc:ra_dav:version-url
+V 61
+/svn/OpusWeb/!svn/ver/477/OpusWeb-PHPv2/vo/PlanosAcessoVO.php
+END
+CepsVO.php
+K 25
+svn:wc:ra_dav:version-url
+V 53
+/svn/OpusWeb/!svn/ver/477/OpusWeb-PHPv2/vo/CepsVO.php
+END
+osiVO.php
+K 25
+svn:wc:ra_dav:version-url
+V 52
+/svn/OpusWeb/!svn/ver/477/OpusWeb-PHPv2/vo/osiVO.php
+END
+contasBancariasVO.php
+K 25
+svn:wc:ra_dav:version-url
+V 64
+/svn/OpusWeb/!svn/ver/477/OpusWeb-PHPv2/vo/contasBancariasVO.php
+END
+ServidoresRadiusVO.php
+K 25
+svn:wc:ra_dav:version-url
+V 65
+/svn/OpusWeb/!svn/ver/477/OpusWeb-PHPv2/vo/ServidoresRadiusVO.php
+END
+HistoricoAcessoVO.php
+K 25
+svn:wc:ra_dav:version-url
+V 64
+/svn/OpusWeb/!svn/ver/477/OpusWeb-PHPv2/vo/HistoricoAcessoVO.php
+END
+EcfVendaDetalheVO.php
+K 25
+svn:wc:ra_dav:version-url
+V 64
+/svn/OpusWeb/!svn/ver/477/OpusWeb-PHPv2/vo/EcfVendaDetalheVO.php
+END
+MenuFacilVO.php
+K 25
+svn:wc:ra_dav:version-url
+V 58
+/svn/OpusWeb/!svn/ver/477/OpusWeb-PHPv2/vo/MenuFacilVO.php
+END
+ServidorRadiusVO.php
+K 25
+svn:wc:ra_dav:version-url
+V 63
+/svn/OpusWeb/!svn/ver/477/OpusWeb-PHPv2/vo/ServidorRadiusVO.php
+END
+impressorasVO.php
+K 25
+svn:wc:ra_dav:version-url
+V 60
+/svn/OpusWeb/!svn/ver/477/OpusWeb-PHPv2/vo/impressorasVO.php
+END
+LoginVO.php
+K 25
+svn:wc:ra_dav:version-url
+V 54
+/svn/OpusWeb/!svn/ver/477/OpusWeb-PHPv2/vo/LoginVO.php
+END
+ConsumoBandaVO.php
+K 25
+svn:wc:ra_dav:version-url
+V 61
+/svn/OpusWeb/!svn/ver/477/OpusWeb-PHPv2/vo/ConsumoBandaVO.php
+END
+TipoServicoOSeVO.php
+K 25
+svn:wc:ra_dav:version-url
+V 63
+/svn/OpusWeb/!svn/ver/477/OpusWeb-PHPv2/vo/TipoServicoOSeVO.php
+END
+ConfiguracoesVO.php
+K 25
+svn:wc:ra_dav:version-url
+V 62
+/svn/OpusWeb/!svn/ver/477/OpusWeb-PHPv2/vo/ConfiguracoesVO.php
+END
+EndPrincipaisVO.php
+K 25
+svn:wc:ra_dav:version-url
+V 62
+/svn/OpusWeb/!svn/ver/477/OpusWeb-PHPv2/vo/EndPrincipaisVO.php
+END
+PermissoesVO.php
+K 25
+svn:wc:ra_dav:version-url
+V 59
+/svn/OpusWeb/!svn/ver/477/OpusWeb-PHPv2/vo/PermissoesVO.php
+END
+AntenasVO.php
+K 25
+svn:wc:ra_dav:version-url
+V 56
+/svn/OpusWeb/!svn/ver/477/OpusWeb-PHPv2/vo/AntenasVO.php
+END
+EmpresaVO.php
+K 25
+svn:wc:ra_dav:version-url
+V 56
+/svn/OpusWeb/!svn/ver/477/OpusWeb-PHPv2/vo/EmpresaVO.php
+END
+FiadoresVO.php
+K 25
+svn:wc:ra_dav:version-url
+V 57
+/svn/OpusWeb/!svn/ver/477/OpusWeb-PHPv2/vo/FiadoresVO.php
+END
+ModuloVO.php
+K 25
+svn:wc:ra_dav:version-url
+V 55
+/svn/OpusWeb/!svn/ver/477/OpusWeb-PHPv2/vo/ModuloVO.php
+END
+RadacctVO.php
+K 25
+svn:wc:ra_dav:version-url
+V 56
+/svn/OpusWeb/!svn/ver/477/OpusWeb-PHPv2/vo/RadacctVO.php
+END
+TotaisVO.php
+K 25
+svn:wc:ra_dav:version-url
+V 55
+/svn/OpusWeb/!svn/ver/477/OpusWeb-PHPv2/vo/TotaisVO.php
+END
+TitulosVO.php
+K 25
+svn:wc:ra_dav:version-url
+V 56
+/svn/OpusWeb/!svn/ver/477/OpusWeb-PHPv2/vo/TitulosVO.php
+END
+SubModuloVO.php
+K 25
+svn:wc:ra_dav:version-url
+V 58
+/svn/OpusWeb/!svn/ver/477/OpusWeb-PHPv2/vo/SubModuloVO.php
+END
+GrupoProdutoVO.php
+K 25
+svn:wc:ra_dav:version-url
+V 61
+/svn/OpusWeb/!svn/ver/477/OpusWeb-PHPv2/vo/GrupoProdutoVO.php
+END
+MovimentoEntDetalheVO.php
+K 25
+svn:wc:ra_dav:version-url
+V 68
+/svn/OpusWeb/!svn/ver/477/OpusWeb-PHPv2/vo/MovimentoEntDetalheVO.php
+END
+ContratosVO.php
+K 25
+svn:wc:ra_dav:version-url
+V 58
+/svn/OpusWeb/!svn/ver/477/OpusWeb-PHPv2/vo/ContratosVO.php
+END
+EnderecoCobrancaVO.php
+K 25
+svn:wc:ra_dav:version-url
+V 65
+/svn/OpusWeb/!svn/ver/477/OpusWeb-PHPv2/vo/EnderecoCobrancaVO.php
+END
+FornecedoresVO.php
+K 25
+svn:wc:ra_dav:version-url
+V 61
+/svn/OpusWeb/!svn/ver/477/OpusWeb-PHPv2/vo/FornecedoresVO.php
+END
+tipoOSe_VO.php
+K 25
+svn:wc:ra_dav:version-url
+V 57
+/svn/OpusWeb/!svn/ver/477/OpusWeb-PHPv2/vo/tipoOSe_VO.php
+END
+InterfacesVO.php
+K 25
+svn:wc:ra_dav:version-url
+V 59
+/svn/OpusWeb/!svn/ver/477/OpusWeb-PHPv2/vo/InterfacesVO.php
+END

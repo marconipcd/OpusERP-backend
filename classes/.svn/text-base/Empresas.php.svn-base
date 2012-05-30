@@ -1,0 +1,63 @@
+<?php
+
+require_once 'classes/BaseClass.php';
+require_once 'vo/EmpresaVO.php';
+
+class Empresas extends BaseClass
+{
+	public function listarEmpresas()
+	{
+		$query = "SELECT * FROM empresas";
+		$result = mysql_query($query);
+
+		while($row = mysql_fetch_assoc($result))
+		{
+			$empresa = new empresaVO();
+			
+			$empresa->cod_empresa = $row['cod_empresa'];
+			$empresa->nome = $row['nome'];
+			$empresa->cnpj = $row['cnpj'];
+			$empresa->agencia = $row['agencia'];
+			$empresa->conta = $row['conta'];
+			$empresa->convenio = $row['convenio'];
+			//$empresa->contrato = $row['contrato'];
+			$empresa->carteira = $row['carteira'];
+			$empresa->variacao_carteira = $row['variacao_carteira'];
+			$empresa->formatacao_carteira = $row['formatacao_carteira'];
+			$empresa->formatacao_n_numero = $row['formatacao_n_numero'];
+			
+			$empresas[] = $empresa;
+		}
+		
+		return $empresas;
+		
+	}
+	public function cadastrarEmpresas(empresaVO $_empresa)
+	{
+		$query = "INSERT INTO radius.empresas (cod_empresa ,nome ,cnpj ,agencia ,conta ,convenio , contrato ,carteira ,variacao_carteira ,formatacao_carteira ,formatacao_n_numero)
+				  VALUES (NULL , '$_empresa->nome', '$_empresa->cnpj', '$_empresa->agencia', '$_empresa->conta', '$_empresa->contrato', '$_empresa->convenio','$_empresa->carteira', '$_empresa->variacao_carteira', '$_empresa->formatacao_carteira', '$_empresa->formatacao_n_numero')";
+		$result = mysql_query($query);	
+	}
+	public function editarEmpresas(empresaVO $_empresa)
+	{
+		$query = "UPDATE empresas SET 
+		nome = '$_empresa->nome', 
+		cnpj = '$_empresa->cnpj',
+		agencia = '$_empresa->agencia',
+		conta = '$_empresa->conta',
+		convenio = '$_empresa->convenio',
+		contrato = '$_empresa->contrato',
+		carteira = '$_empresa->carteira',
+		variacao_carteira = '$_empresa->variacao_carteira',
+		formatacao_carteira = '$_empresa->formatacao_carteira',
+		formatacao_n_numero = '$_empresa->formatacao_n_numero' WHERE cod_empresa = '$_empresa->cod_empresa'";
+		
+		$result = mysql_query($query);
+	}
+	public function excluirEmpresas($id)
+	{
+		$query = "DELETE FROM empresas WHERE cod_empresa = '$id'";
+		$result = mysql_query($query);
+	}
+	
+}

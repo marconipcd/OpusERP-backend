@@ -1,0 +1,11 @@
+<?php
+
+class CrmAtrendimentoVO
+{
+	public $id; 	
+	public $codCliente; 	
+	public $atendente; 	
+	public $dataatendimento; 	
+	public $horaatendimento; 	
+	public $observacoes; 
+}

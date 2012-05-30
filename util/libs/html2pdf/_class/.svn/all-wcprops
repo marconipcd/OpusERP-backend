@@ -1,0 +1,41 @@
+K 25
+svn:wc:ra_dav:version-url
+V 65
+/svn/OpusWeb/!svn/ver/477/OpusWeb-PHPv2/util/libs/html2pdf/_class
+END
+parsingHtml.class.php
+K 25
+svn:wc:ra_dav:version-url
+V 87
+/svn/OpusWeb/!svn/ver/477/OpusWeb-PHPv2/util/libs/html2pdf/_class/parsingHtml.class.php
+END
+parsingCss.class.php
+K 25
+svn:wc:ra_dav:version-url
+V 86
+/svn/OpusWeb/!svn/ver/477/OpusWeb-PHPv2/util/libs/html2pdf/_class/parsingCss.class.php
+END
+exception.class.php
+K 25
+svn:wc:ra_dav:version-url
+V 85
+/svn/OpusWeb/!svn/ver/477/OpusWeb-PHPv2/util/libs/html2pdf/_class/exception.class.php
+END
+locale.class.php
+K 25
+svn:wc:ra_dav:version-url
+V 82
+/svn/OpusWeb/!svn/ver/477/OpusWeb-PHPv2/util/libs/html2pdf/_class/locale.class.php
+END
+myPdf.class.php
+K 25
+svn:wc:ra_dav:version-url
+V 81
+/svn/OpusWeb/!svn/ver/477/OpusWeb-PHPv2/util/libs/html2pdf/_class/myPdf.class.php
+END
+tcpdfConfig.php
+K 25
+svn:wc:ra_dav:version-url
+V 81
+/svn/OpusWeb/!svn/ver/477/OpusWeb-PHPv2/util/libs/html2pdf/_class/tcpdfConfig.php
+END

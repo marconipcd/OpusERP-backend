@@ -1,0 +1,823 @@
+<?php
+
+require_once 'BaseClass.php';
+
+require_once 'vo/ChamadosVO.php';
+require_once 'vo/AntenasVO.php';
+
+class Chamados extends BaseClass
+{
+	
+	public function listarChamados2($cliente, $dataFechamento)
+	{
+		
+		return;
+		
+		//Data Fechamento
+		if($dataFechamento != '')
+		{
+			$dia1 =  substr($dataFechamento, 0, 2);
+			$mes1 =  substr($dataFechamento, 3, 2);
+			$ano1 =  substr($dataFechamento, 6, 4);
+		
+			$dataFechamento = $ano1.'-'.$mes1.'-'.$dia1;
+		}else 
+		{
+			$dataFechamento = date('Y-m');
+		}
+		
+		
+	
+
+
+		$query = "SELECT tb_chamados. *, pessoa.codigoPessoa, pessoa.acesso, pessoa.textoNome, pessoa.plano, pessoa.antena, 
+				pessoa.textoEndereco, pessoa.referencia, pessoa.telefone, pessoa.telefone2, pessoa.celular1, pessoa.celular2, 
+				pessoa.loginCliente, pessoa.ipCliente, pessoa.regime, produtos_clientes. *, estoque. *
+				FROM
+				tb_chamados
+				INNER JOIN pessoa ON tb_chamados.codCliente = pessoa.codigoPessoa 
+				INNER JOIN produtos_clientes ON produtos_clientes.id_cliente = pessoa.codigoPessoa
+				INNER JOIN estoque ON estoque.id = produtos_clientes.id_produto
+				WHERE pessoa.textoNome LIKE '%$cliente%' AND data_fechamento LIKE '%$dataFechamento%'
+				ORDER BY dataEx, horario, turno ASC";
+
+		$result = mysql_query($query);
+		
+		while ($row = mysql_fetch_assoc($result)) {
+    		
+			
+			$id_chamado = $row['id_chamado'];
+			
+			$queryMaterial = "SELECT * FROM tb_chamados WHERE id_chamado = '$id_chamado'";
+			$resultMaterial = mysql_query($queryMaterial);
+			$rowMaterial = mysql_fetch_assoc($resultMaterial);
+			$id_Produto = $rowMaterial['material'];
+			
+			$queryDescr_Produto = "SELECT * FROM estoque WHERE id = '$id_Produto'";
+			$resultDescr_produto = mysql_query($queryDescr_Produto);
+			$rowDescProduto = mysql_fetch_assoc($resultDescr_produto);
+			
+			$chamado = new ChamadosVO();
+				
+				$ano_dataEx = substr($row['dataEx'], 0, 4);
+				$mes_dataEx = substr($row['dataEx'], 5, 2);
+				$dia_dataEx = substr($row['dataEx'], 8, 2);
+				
+				$dataComp = $dia_dataEx.'/'.$mes_dataEx.'/'.$ano_dataEx;
+				
+			$chamado->id = $row['id_chamado'];
+			$chamado->codigoPessoa = $row['codigoPessoa'];
+			$chamado->tipo = substr($row['tipo'], 0, 3);
+			$chamado->dataEx = $row['dataEx'];
+			$chamado->horario = $row['horario'];
+			$chamado->turno = substr($row['turno'], 0, 1);  
+			$chamado->textoNome = $row['textoNome'];
+			$chamado->contato = $row['contato'];
+			$chamado->bairro = $row['bairro'];
+			$chamado->problema = $row['problema'];
+			$chamado->conclusao = $row['conclusao'];
+			$chamado->prioridade = substr($row['prioridade'], 0, 1);  
+			$chamado->data_fechamento = $row['data_fechamento'];
+			$chamado->dataAndamento = $row['dataAndamento'];
+			$chamado->hora_encaminhado = $row['hora_encaminhado'];
+			$chamado->hora_fechado = $row['hora_fechado'];		
+			$chamado->status = substr($row['status'], 0, 1); 
+			$chamado->status = substr($row['status'], 0, 1);  
+			$chamado->acesso = $row['acesso'];
+			$chamado->plano = $row['plano'];
+			$chamado->antena = $row['antena'];
+			$chamado->motivo = $row['motivo'];
+			$chamado->tecnico = strtoupper(trim($row['tecnico']));
+			$chamado->tipoEncaminhamento = $row['tipoEncaminhamento'];
+			$chamado->observacao = $row['obs'];
+			$chamado->desc_produto = $rowDescProduto['desc_produto'];
+			$chamado->regime = $row['regime'];
+			
+			
+			$chamados[] = $chamado;
+		}
+		
+		mysql_free_result($result);
+		
+		
+		///////////////////////////////////////
+		$user_logado = $_SESSION["nome"];
+		$data = date('Y-m-d');
+		$desc = 'Listou Chamados ';
+		
+		$query_Logs = "INSERT INTO radius.logs (id ,login ,data ,desc)VALUES (NULL , '$user_logado', '$data', '$desc')";
+		$result_logs = mysql_query($query_Logs);
+		////////////////////////////////////////////////////////	
+		
+	
+
+		return $chamados;
+		
+	}
+	public function listarChamados($tipo, $status)
+	{
+		
+		if($tipo == 'INSTALACAO')
+		{
+			$query = "SELECT tb_chamados. * , pessoa.codigoPessoa, pessoa.textoNome, pessoa.acesso, pessoa.plano, pessoa.antena, 
+			pessoa.textoEndereco, pessoa.referencia, pessoa.telefone, pessoa.telefone2, pessoa.celular1, pessoa.celular2, pessoa.loginCliente, 
+			pessoa.ipCliente FROM tb_chamados INNER JOIN pessoa ON tb_chamados.codCliente = pessoa.codigoPessoa WHERE tipo LIKE '%$tipo%' 
+			AND tb_chamados.status LIKE '%$status%'  ORDER BY dataEx, horario, turno ASC";
+			
+			$result = mysql_query($query);
+		
+			while ($row = mysql_fetch_assoc($result)) {
+    		
+			$chamado = new ChamadosVO();
+				
+				$ano_dataEx = substr($row['dataEx'], 0, 4);
+				$mes_dataEx = substr($row['dataEx'], 5, 2);
+				$dia_dataEx = substr($row['dataEx'], 8, 2);
+				
+				$dataComp = $dia_dataEx.'/'.$mes_dataEx.'/'.$ano_dataEx;
+				
+			$chamado->id = $row['id_chamado'];
+			$chamado->codigoPessoa = $row['codigoPessoa'];
+			$chamado->tipo = substr($row['tipo'], 0, 3);
+			$chamado->dataEx = $row['dataEx'];
+			$chamado->horario = $row['horario'];
+			$chamado->turno = substr($row['turno'], 0, 1);  
+			$chamado->textoNome = $row['textoNome'];
+			$chamado->contato = $row['contato'];
+			$chamado->bairro = $row['bairro'];
+			$chamado->problema = $row['problema'];
+			$chamado->conclusao = $row['conclusao'];
+			$chamado->prioridade = substr($row['prioridade'], 0, 1);  
+			$chamado->data_fechamento = $row['data_fechamento'];
+			$chamado->dataAndamento = $row['dataAndamento'];
+			$chamado->hora_encaminhado = $row['hora_encaminhado'];
+			$chamado->hora_fechado = $row['hora_fechado'];		
+			$chamado->status = substr($row['status'], 0, 1);  
+			$chamado->acesso = $row['acesso'];
+			$chamado->plano = $row['plano'];
+			$chamado->antena = $row['antena'];
+			$chamado->tecnico = strtoupper(trim($row['tecnico']));
+			$chamado->tipoEncaminhamento = $row['tipoEncaminhamento'];
+			$chamado->observacao = $row['obs'];
+			
+			$chamados[] = $chamado;
+		}
+		
+		mysql_free_result($result);
+		
+		}else if($tipo == 'OUTROS')
+		{
+			$query = "SELECT tb_chamados. * , pessoa.codigoPessoa, pessoa.textoNome, pessoa.acesso, pessoa.plano, pessoa.antena, 
+			pessoa.textoEndereco, pessoa.referencia, pessoa.telefone, pessoa.telefone2, pessoa.celular1, pessoa.celular2, pessoa.loginCliente, 
+			pessoa.ipCliente FROM tb_chamados INNER JOIN pessoa ON tb_chamados.codCliente = pessoa.codigoPessoa WHERE tipo LIKE '%$tipo%' 
+			AND tb_chamados.status LIKE '%$status%'  ORDER BY dataEx, horario, turno ASC";
+			$result = mysql_query($query);
+		
+			while ($row = mysql_fetch_assoc($result)) {
+    		
+			$chamado = new ChamadosVO();
+				
+				$ano_dataEx = substr($row['dataEx'], 0, 4);
+				$mes_dataEx = substr($row['dataEx'], 5, 2);
+				$dia_dataEx = substr($row['dataEx'], 8, 2);
+				
+				$dataComp = $dia_dataEx.'/'.$mes_dataEx.'/'.$ano_dataEx;
+				
+			$chamado->id = $row['id_chamado'];
+			$chamado->codigoPessoa = $row['codigoPessoa'];
+			$chamado->tipo = substr($row['tipo'], 0, 3);
+			$chamado->dataEx = $row['dataEx'];
+			$chamado->horario = $row['horario'];
+			$chamado->turno = substr($row['turno'], 0, 1);  
+			$chamado->textoNome = $row['textoNome'];
+			$chamado->contato = $row['contato'];
+			$chamado->bairro = $row['bairro'];
+			$chamado->problema = $row['problema'];
+			$chamado->conclusao = $row['conclusao'];
+			$chamado->prioridade = substr($row['prioridade'], 0, 1);  
+			$chamado->data_fechamento = $row['data_fechamento'];
+			$chamado->dataAndamento = $row['dataAndamento'];
+			$chamado->hora_encaminhado = $row['hora_encaminhado'];
+			$chamado->hora_fechado = $row['hora_fechado'];		
+			$chamado->status = substr($row['status'], 0, 1);  
+			$chamado->acesso = $row['acesso'];
+			$chamado->plano = $row['plano'];
+			$chamado->antena = $row['antena'];
+			$chamado->tecnico = strtoupper(trim($row['tecnico']));
+			$chamado->tipoEncaminhamento = $row['tipoEncaminhamento'];
+			$chamado->observacao = $row['obs'];
+			$chamado->tipo_servico = $row['tipo_servico'];
+			
+			$chamados[] = $chamado;
+		}
+		
+		mysql_free_result($result);
+		
+		}else
+		{
+			$query = "SELECT tb_chamados. *, pessoa.codigoPessoa, pessoa.textoNome,pessoa.acesso, pessoa.plano, pessoa.antena, 
+			pessoa.textoEndereco, pessoa.referencia, pessoa.telefone, pessoa.telefone2, pessoa.celular1, pessoa.celular2, 
+			pessoa.loginCliente, pessoa.ipCliente, produtos_clientes. *, estoque. *
+			FROM
+			tb_chamados
+			INNER JOIN pessoa ON tb_chamados.codCliente = pessoa.codigoPessoa 
+			INNER JOIN produtos_clientes ON produtos_clientes.id_cliente = pessoa.codigoPessoa
+			INNER JOIN estoque ON estoque.id = produtos_clientes.id_produto
+			WHERE tb_chamados.tipo LIKE '%$tipo%' AND tb_chamados.status LIKE '%$status%' 
+			ORDER BY dataEx, horario, turno ASC";
+			
+			$query = "SELECT ose.*, clientes.*, estoque.* from ose 
+			INNER JOIN clientes ON ose.CLIENTE_ID = clientes.ID
+			INNER JOIN produtos_clientes";
+			
+			$result = mysql_query($query);
+		
+			while ($row = mysql_fetch_assoc($result)) {
+    		
+			$chamado = new ChamadosVO();
+				
+				$ano_dataEx = substr($row['dataEx'], 0, 4);
+				$mes_dataEx = substr($row['dataEx'], 5, 2);
+				$dia_dataEx = substr($row['dataEx'], 8, 2);
+				
+				$dataComp = $dia_dataEx.'/'.$mes_dataEx.'/'.$ano_dataEx;
+				
+			$chamado->id = $row['id_chamado'];
+			$chamado->codigoPessoa = $row['codigoPessoa'];
+			$chamado->tipo = substr($row['tipo'], 0, 3);
+			$chamado->dataEx = $row['dataEx'];
+			$chamado->horario = $row['horario'];
+			$chamado->turno = substr($row['turno'], 0, 1);  
+			$chamado->textoNome = $row['textoNome'];
+			$chamado->contato = $row['contato'];
+			$chamado->bairro = $row['bairro'];
+			$chamado->problema = $row['problema'];
+			$chamado->conclusao = $row['conclusao'];
+			$chamado->prioridade = substr($row['prioridade'], 0, 1);  
+			$chamado->data_fechamento = $row['data_fechamento'];
+			$chamado->dataAndamento = $row['dataAndamento'];
+			$chamado->hora_encaminhado = $row['hora_encaminhado'];
+			$chamado->hora_fechado = $row['hora_fechado'];	
+			$chamado->status = substr($row['status'], 0, 1);  
+			$chamado->acesso = $row['acesso'];
+			$chamado->plano = $row['plano'];
+			$chamado->antena = $row['antena'];
+			$chamado->motivo = $row['motivo'];
+			$chamado->tecnico = strtoupper(trim($row['tecnico']));
+			$chamado->tipoEncaminhamento = $row['tipoEncaminhamento'];
+			$chamado->observacao = $row['obs'];
+			$chamado->desc_produto = $row['desc_produto'];
+			$chamado->tipo_servico = $row['tipo_servico'];
+			
+			
+			$chamados[] = $chamado;
+		}
+		
+		mysql_free_result($result);
+		
+		}
+
+		return $chamados;
+		
+	}
+	
+	public function ProcurarChamados(ChamadosVO $dataEx)
+	{
+		
+		$dataDia = substr($dataEx->dataEx, 0, 2);
+		$dataMes = substr($dataEx->dataEx, 3, 2);
+		$dataAno = substr($dataEx->dataEx, 6, 4);
+		
+		$dataCom = $dataAno.'-'.$dataMes.'-'.$dataDia;
+		
+		$query = "SELECT tb_chamados. * , pessoa.acesso, pessoa.textoNome, pessoa.plano, pessoa.antena FROM tb_chamados INNER JOIN pessoa ON tb_chamados.codCliente = pessoa.codigoPessoa WHERE dataEx = '$dataCom' ORDER BY id ASC";
+		
+		$result = mysql_query($query);
+		
+		while ($row = mysql_fetch_assoc($result)) {
+    		
+			$chamado = new ChamadosVO();
+				
+				$ano_dataEx = substr($row['dataEx'], 0, 4);
+				$mes_dataEx = substr($row['dataEx'], 5, 2);
+				$dia_dataEx = substr($row['dataEx'], 8, 2);
+				
+				$dataComp = $dia_dataEx.'/'.$mes_dataEx.'/'.$ano_dataEx;
+				
+			$chamado->id = $row['id_chamado'];	
+			$chamado->tipo = substr($row['tipo'], 0, 3);
+			$chamado->dataEx = $row['dataEx'];
+			$chamado->horario = $row['horario'];
+			$chamado->turno = substr($row['turno'], 0, 1);  
+			$chamado->textoNome = $row['textoNome'];
+			$chamado->contato = $row['contato'];
+			$chamado->motivo = $row['motivo'];
+			$chamado->bairro = $row['bairro'];
+			$chamado->problema = $row['problema'];
+			$chamado->conclusao = $row['conclusao'];
+			$chamado->prioridade = substr($row['prioridade'], 0, 1);  
+			$chamado->data_fechamento = $row['data_fechamento'];
+			$chamado->dataAndamento = $row['dataAndamento'];
+			$chamado->hora_encaminhado = $row['hora_encaminhado'];
+			$chamado->hora_fechado = $row['hora_fechado'];	
+			$chamado->status = substr($row['status'], 0, 1);  
+			$chamado->acesso = $row['acesso'];
+			$chamado->plano = $row['plano'];
+			$chamado->antena = $row['antena'];
+			$chamado->tecnico = $row['tecnico'];
+			
+			
+			$chamados[] = $chamado;
+		}
+		
+		mysql_free_result($result);
+
+		return $chamados;
+	}
+	public function ProcurarChamadosPersonalizada($status, $tipoCha, $nomeCliente, $filtroData, $dataInicio, $dataFim, $filtroAdicional1, $valorAdicional1)
+	{
+		
+		//Filtros DATA
+		if($filtroData == 'ABERTO')
+		{
+			$campoData = 'data_abertura';
+		}elseif ($filtroData == 'AGENDADO')
+		{
+			$campoData = 'dataEx';
+		}elseif ($filtroData == 'FECHADO')
+		{
+			$campoData = 'data_fechamento';
+		}
+		
+		//Filtro Adicional 1
+		
+		if($filtroAdicional1 == 'OS')
+		{
+			$campoAdicional1 = 'id_chamado';
+			
+		}elseif ($filtroAdicional1 == 'BAIRRO')
+		{
+			$campoAdicional1 = 'tb_chamados.bairro';
+		}elseif ($filtroAdicional1 == 'CIDADE')
+		{
+			$campoAdicional1 = 'pessoa.textoCidade';
+		}elseif ($filtroAdicional1 == 'PROBLEMA')
+		{
+			$campoAdicional1 = 'problema';
+		}elseif ($filtroAdicional1 == 'LAUDO')
+		{
+			$campoAdicional1 = 'conclusao';
+		}elseif ($filtroAdicional1 == 'TIPO ACESSO')
+		{
+			$campoAdicional1 = 'acesso';
+		}elseif ($filtroAdicional1 == 'PLANO')
+		{
+			$campoAdicional1 = 'plano';
+			
+		}elseif ($filtroAdicional1 == 'BASE')
+		{
+			$campoAdicional1 = 'base';
+		}elseif ($filtroAdicional1 == 'MATERIAL')
+		{
+			$campoAdicional1 = 'estoque.desc_produto';
+			
+		}elseif ($filtroAdicional1 == 'TECNICO')
+		{
+			$campoAdicional1 = 'tecnico';
+		}elseif ($filtroAdicional1 == 'TIPO DE CHAMADO')
+		{
+			$campoAdicional1 = 'tipo';
+		}else 
+		{
+			$campoAdicional1 = 'id_chamado';
+		}
+		
+		//status
+		if($status == 'TODOS')
+		{
+			$status = '';
+		}
+		//tipo chamado
+		if($tipoCha == 'TODOS')
+		{
+			$tipoCha = '';
+		}
+		
+		if($dataInicio != '' | $dataFim != '')
+		{
+		//Transformar Datas
+		$dia_dataInicio = substr($dataInicio, 0, 2);
+		$mes_dataInicio = substr($dataInicio, 3, 2);
+		$ano_dataInicio = substr($dataInicio, 6, 4);
+		
+		$dia_dataFim = substr($dataFim, 0, 2);
+		$mes_dataFim = substr($dataFim, 3, 2);
+		$ano_dataFim = substr($dataFim, 6, 4);
+		
+		$dataInicio = $ano_dataInicio.'-'.$mes_dataInicio.'-'.$dia_dataInicio;
+		$dataFim = $ano_dataFim.'-'.$mes_dataFim.'-'.$dia_dataFim;
+
+		
+		$query = "SELECT tb_chamados. *, pessoa.codigoPessoa,pessoa.textoNome, pessoa.acesso, pessoa.plano, pessoa.antena, 
+			pessoa.textoEndereco, pessoa.referencia, pessoa.telefone, pessoa.telefone2, pessoa.celular1, pessoa.celular2, 
+			pessoa.loginCliente, pessoa.ipCliente, pessoa.regime, produtos_clientes. *, estoque. *
+			FROM
+			tb_chamados
+			INNER JOIN pessoa ON tb_chamados.codCliente = pessoa.codigoPessoa 
+			INNER JOIN produtos_clientes ON produtos_clientes.id_cliente = pessoa.codigoPessoa
+			INNER JOIN estoque ON estoque.id = produtos_clientes.id_produto
+			WHERE tb_chamados.status LIKE '%$status%' 
+			AND tb_chamados.tipo LIKE '%$tipoCha%' 
+			AND pessoa.textoNome LIKE '%$nomeCliente%' 
+			AND ".$campoAdicional1." LIKE '%$valorAdicional1%'
+			AND ".$campoData." >= '$dataInicio'
+			AND ".$campoData." <= '$dataFim'
+			ORDER BY dataEx, horario, turno ASC";
+		}else 
+		{
+		$query = "SELECT tb_chamados. *, pessoa.codigoPessoa,pessoa.textoNome, pessoa.acesso, pessoa.plano, pessoa.antena, 
+			pessoa.textoEndereco, pessoa.referencia, pessoa.telefone, pessoa.telefone2, pessoa.celular1, pessoa.celular2, 
+			pessoa.loginCliente, pessoa.ipCliente, pessoa.regime, produtos_clientes. *, estoque. *
+			FROM
+			tb_chamados
+			INNER JOIN pessoa ON tb_chamados.codCliente = pessoa.codigoPessoa
+			INNER JOIN produtos_clientes ON produtos_clientes.id_cliente = pessoa.codigoPessoa
+			INNER JOIN estoque ON estoque.id = produtos_clientes.id_produto
+			WHERE tb_chamados.status LIKE '%$status%' 
+			AND tb_chamados.tipo LIKE '%$tipoCha%' 
+			AND pessoa.textoNome LIKE '%$nomeCliente%' 
+			AND ".$campoAdicional1." LIKE '%$valorAdicional1%'
+			ORDER BY dataEx, horario, turno ASC";
+		}
+		
+		$result = mysql_query($query);
+		
+		
+		
+		while ($row = mysql_fetch_assoc($result)) {
+    		
+			$chamado = new ChamadosVO();
+				
+				$ano_dataEx = substr($row['dataEx'], 0, 4);
+				$mes_dataEx = substr($row['dataEx'], 5, 2);
+				$dia_dataEx = substr($row['dataEx'], 8, 2);
+				
+				$dataComp = $dia_dataEx.'/'.$mes_dataEx.'/'.$ano_dataEx;
+				
+			$chamado->id = $row['id_chamado'];
+			$chamado->codigoPessoa = $row['codigoPessoa'];
+			$chamado->tipo = substr($row['tipo'], 0, 3);
+			$chamado->dataEx = $row['dataEx'];
+			$chamado->horario = $row['horario'];
+			$chamado->turno = substr($row['turno'], 0, 1);  
+			$chamado->textoNome = $row['textoNome'];
+			$chamado->contato = $row['contato'];
+			$chamado->bairro = $row['bairro'];
+			$chamado->problema = $row['problema'];
+			$chamado->conclusao = $row['conclusao'];
+			$chamado->prioridade = substr($row['prioridade'], 0, 1);  
+			$chamado->data_fechamento = $row['data_fechamento'];
+			$chamado->dataAndamento = $row['dataAndamento'];
+			$chamado->hora_encaminhado = $row['hora_encaminhado'];
+			$chamado->hora_fechado = $row['hora_fechado'];		
+			$chamado->status = substr($row['status'], 0, 1); 
+			$chamado->status = substr($row['status'], 0, 1);  
+			$chamado->acesso = $row['acesso'];
+			$chamado->motivo = $row['motivo'];
+			$chamado->plano = $row['plano'];
+			$chamado->antena = $row['base'];
+			$chamado->tecnico = strtoupper(trim($row['tecnico']));
+			$chamado->tipoEncaminhamento = $row['tipoEncaminhamento'];
+			$chamado->observacao = $row['obs'];
+			$chamado->desc_produto = $row['desc_produto'];
+			$chamado->regime = $row['regime'];
+			
+						
+			$chamados[] = $chamado;
+			
+			
+		}
+		
+			return  $chamados;
+			
+		
+	}
+	public function CadastrarChamado($tipo, $codCliente, $contato, $endereco, $numero, $complemento, $bairro, $referencia, $telefone1, $telefone2, $celular1, $celular2, $problema, $dataExecucao, $horario, $turno, $prioridade, $obs, $motivo, $tipo_servico, $valor_boleto)
+	{
+		$gerarBoleto = false;
+		
+		//Tipos de Chamados
+		if($tipo == 'CHAMADO INTERNET'){
+			$tipo = 'CHAMADO';
+			
+		}elseif ($tipo == 'INSTALACAO INTERNET'){
+			$tipo = 'INSTALACAO';
+			
+		}elseif ($tipo == 'MUDANCA ENDERECO'){
+			$tipo = 'MUDANCA';
+			
+		}elseif ($tipo == 'CANCELAMENTO INTERNET'){
+			$tipo = 'CANCELAMENTO';
+			
+		}elseif ($tipo == 'OUTROS SERVICOS'){
+			$tipo = 'OUTROS';
+			
+		}
+		
+		//======Pegar valor do Boleto===================//
+		$query_gerarBoleto = "SELECT * FROM configpontoschamados WHERE tipo_chamado = '$tipo'";
+		$result_gerarBoleto = mysql_query($query_gerarBoleto);
+		$row_gerarBoleto = mysql_fetch_assoc($result_gerarBoleto);
+		
+			if($row_gerarBoleto['gerarBoleto'] == 'SIM')
+			{
+					$gerarBoleto = true;
+					
+					if($valor_boleto == '0,00')
+					{
+						$valorTitulo = $row_gerarBoleto['valorTitulo'];
+					}else
+					{
+						$valorTitulo = $valor_boleto;
+					}
+				
+			}else
+			{
+				$gerarBoleto = false;
+			}
+			
+		
+			if($tipo != 'OUTROS')
+			{
+				//--------------Pegar Cod do Produto do Cliente
+				$querycodProduto = "SELECT * FROM produtos_clientes WHERE id_cliente = '$codCliente'";
+				$resultCodProduto = mysql_query($querycodProduto);
+				
+				if($tipo != 'INSTALACAO')
+				{
+					$rowcodproduto = mysql_fetch_assoc($resultCodProduto);
+					$produto_cliente = $rowcodproduto['id_produto'];
+				}else
+				{
+					$produto_cliente = '0';
+				}
+				
+				//-------------Pegar Antena Cliente
+				$queryAntena = "SELECT * FROM pessoa WHERE codigoPessoa = '$codCliente'";
+				$resultAntena = mysql_query($queryAntena);
+				$rowAntena = mysql_fetch_assoc($resultAntena);
+				$antenaCliente = $rowAntena['antena'];
+				
+			}else
+			{
+					$produto_cliente = '0';
+			}
+			
+		$dataHoje = date('Y-m-d');
+		$diaDataEx = substr($dataExecucao, 0, 2);
+		$mesDataEx = substr($dataExecucao, 3, 2);
+		$anoDataEx = substr($dataExecucao, 6, 4);
+		
+		$dataExecucao = $anoDataEx.'-'.$mesDataEx.'-'.$diaDataEx;
+			
+			
+		//-------------Criar Chamado
+		$query = "INSERT INTO tb_chamados (tipo, dataEx, turno, quem_abriu, data_abertura, horario, codCliente, contato, bairro, endereco, referencia, problema, status, prioridade, obs, motivo, tipo_servico ,material, base)
+		VALUES 
+		('$tipo', '$dataExecucao', '$turno', '' , '$dataHoje', '$horario', '$codCliente', '$contato','$bairro', '$endereco', '$referencia', '$problema', 'ABERTO', '$prioridade', '$obs', '$motivo', '$tipo_servico' ,'$produto_cliente', '$antenaCliente')";
+		$result = mysql_query($query);
+		
+		
+		//--------------Atualizar Tabela Principal
+		$query2 = "UPDATE pessoa SET contato='$contato', textoEndereco='$endereco', numero='$numero', complemento='$complemento', referencia='$referencia', bairro='$bairro', telefone='$telefone1', telefone2='$telefone2', celular1='$celular1', celular2='$celular2' WHERE codigoPessoa='$codCliente'";
+		$result2 = mysql_query($query2);
+		
+		
+		
+		
+		if($gerarBoleto == true)
+		{
+				//=================GERAR BOLETO MUDANÇA==================================//
+				//Consultar ultimo boleto gerado
+				$sqlUltimoBoleto = "SELECT * FROM contasapagar ORDER BY id DESC";
+				$resultadoBoleto = mysql_query($sqlUltimoBoleto);
+			    $row_ultimo_boleto = mysql_fetch_assoc($resultadoBoleto);
+				
+           		//Serie do ultimo boleto gerado
+				$ultimoNumero = $resultadoBoleto['nNumero']; 
+              				
+				//Infor boletos
+				$dadosboleto["nosso_numero"] = $ultimoNumero+1;
+				$dadosboleto["convenio"] = "1248695"; 
+				$dadosboleto["formatacao_convenio"] = "7";
+				$dadosboleto["formatacao_nosso_numero"] = "2";
+
+				$dadosboleto["carteira"] = "18";
+				$dadosboleto["agencia"] = "0721-8";
+				$dadosboleto["conta"] = "18751-8";
+				
+				$nNumero = $dadosboleto["nosso_numero"];
+				
+				$quantidade = '1';
+				// o prazo começa com 0
+   				$_prazo = 0;
+   
+				for($i=0;$i < $quantidade;$i++)
+   				{
+		
+					$sequencia = $i;
+					if($i ==0){
+						$sequencia++;
+					}else if($i == $sequencia){
+						$sequencia++;
+					}
+					
+					$sequencia2 = str_pad($sequencia, 2, "0", STR_PAD_LEFT);
+					$ano = date('y');
+
+					
+       
+					//Consultar ultimo boleto gerado
+					$sqlUltimoBoleto2 = "SELECT * FROM contasapagar ORDER BY id DESC";
+					$resultadoBoleto2 = mysql_query($sqlUltimoBoleto2);
+					$row_ultimo_boleto2 = mysql_fetch_assoc($resultadoBoleto2);
+			    
+           			//Serie do ultimo boleto gerado
+					$ultimoNumero = $row_ultimo_boleto2['nNumero'];  
+					$ultimoBoleto = $ultimoNumero+1;
+				
+					$vencimento = date('d/m/Y');
+					
+					//$dataPrimeiroBoleto = "10/01/2011";
+					$_dia = substr($vencimento, 0, 2);
+   					$_mes = substr($vencimento, 3, 2);
+   					$_ano  = substr($vencimento, 6, 4);
+			
+	   				$_ts = mktime(0,0,0,$_mes+$_prazo,$_dia,$_ano);
+       				$_data = date('Y-m-d',$_ts);
+	   				
+	   				$NumeroNovo = $ultimoBoleto;
+	  				
+					$emissao = date('Y-m-d');
+					
+					$query_UltimoChamado = "SELECT * FROM tb_chamados ORDER BY id_chamado DESC";
+					$result_UltimoChamado = mysql_query($query_UltimoChamado);
+					$row_ultimoChamado = mysql_fetch_assoc($result_UltimoChamado);
+					
+					$ndocumento = 'OSE_'.ltrim($row_ultimoChamado['id_chamado'], '0');
+					
+					//Inserindo
+					$sql = "INSERT INTO contasapagar (id,ndocumento,cliente,vencimento,valor, status, emissao, nNumero, controle) VALUES
+					('','$ndocumento', '$codCliente', '$emissao','$valorTitulo', 'ABERTO', '$emissao','$NumeroNovo', '$ndocumento')";
+					 
+					$resultadoSql = mysql_query($sql);
+        			
+        			//supondo que o vencimento é de 30 em 30 dias 
+					
+        			$_prazo += 1;
+        			
+    			}//for
+				
+				
+		}//if
+		
+		
+		
+	}
+	public function excluirChamado($id)
+	{
+		$query = "DELETE FROM tb_chamados WHERE id_chamado = '$id'";
+		$result = mysql_query($query);
+		
+		
+		///////////////////////////////////////
+		$user_logado = $_SESSION["nome"];
+		$data = date('Y-m-d');
+		$desc = 'Excluiu o Chamado '.$id;
+		
+		$query_Logs = "INSERT INTO radius.logs (id ,login ,data ,desc)VALUES (NULL , '$user_logado', '$data', '$desc')";
+		$result_logs = mysql_query($query_Logs);
+		////////////////////////////////////////////////////////
+	}
+	
+	public function EncaminharChamado($id, $tipoEncaminhamento)
+	{
+		$user_logado = $_SESSION["nome"];
+		$dataAndamento = date('Y-m-d');
+		$horaAndamento = date("H:i:s");
+		$query = "UPDATE tb_chamados SET status = 'EM ANDAMENTO', tipoEncaminhamento = '$tipoEncaminhamento', dataAndamento='$dataAndamento', hora_encaminhado='$horaAndamento', tecnico='$user_logado' WHERE id_chamado = '$id'";
+		$result = mysql_query($query);
+		
+		
+		///////////////////////////////////////
+		$user_logado = $_SESSION["nome"];
+		$data = date('Y-m-d');
+		$desc = 'Encaminhou o Chamado '.$id;
+		
+		$query_Logs = "INSERT INTO radius.logs (id ,login ,data ,desc)VALUES (NULL , '$user_logado', '$data', '$desc')";
+		$result_logs = mysql_query($query_Logs);
+		////////////////////////////////////////////////////////
+	}
+	public function FecharChamado2($idChamado, $laudo)
+	{
+		$user_logado = $_SESSION["nome"];
+		$dataFechamento = date('Y-m-d');
+		$horaFechamento = date("H:i:s");
+		
+		$query = "UPDATE tb_chamados SET status = 'FECHADO', tecnico='$user_logado', conclusao='$laudo', data_fechamento='$dataFechamento', hora_fechado='$horaFechamento' WHERE id_chamado = '$idChamado'";
+		$result = mysql_query($query);
+		
+	}
+	public function FecharChamado($idChamado, $laudo, $base, $IdsProdutos)
+	{
+		
+		
+		//Pegando Todos os Dados do Chamado------------------------------------------//
+		$queryDadosChamados = "SELECT * FROM tb_chamados WHERE id_chamado = '$idChamado'";
+		$resultDadosChamados = mysql_query($queryDadosChamados);
+		$rowDadosChamados = mysql_fetch_assoc($resultDadosChamados);
+		$nomeCliente = $rowDadosChamados['codCliente'];
+		
+		//Pegar o Id do Cliente-------------------------------------------------------//
+		$queryCliente = "SELECT pessoa.codigoPessoa FROM pessoa  WHERE textoNome LIKE '$nomeCliente'";
+		$resultCliente = mysql_query($queryCliente);
+		$rowCliente = mysql_fetch_assoc($resultCliente);
+		$idCliente = $rowCliente['codigoPessoa'];
+		
+		//Adicionar Produtos a Tabela de Cliente_Produtos--------------------------//
+		$adicionados = array();//
+		
+		foreach ($IdsProdutos as $id)
+		{
+			//------Instrução para Cadastrar todos os Produtos numa única tabela-------//
+			$query = "INSERT INTO produtos_clientes (id ,id_cliente ,id_produto)VALUES (NULL , '$idCliente', '$id')";
+			mysql_query($query);
+			$adicionados[$id] = mysql_affected_rows();
+		}
+		
+				
+		$dataFechamento = date('Y-m-d');
+		$horaFechamento = date("H:i:s");
+		//Fechar Chamado Aberto----------------------------------------------------------//
+		$user_logado = $_SESSION["nome"];
+		$query = "UPDATE tb_chamados SET status = 'FECHADO', tecnico='$user_logado', conclusao='$laudo', data_fechamento='$dataFechamento', hora_fechado='$horaFechamento' WHERE id_chamado = '$idChamado'";
+		$result = mysql_query($query);
+		
+		
+		///////////////////////////////////////
+		$user_logado = $_SESSION["nome"];
+		$data = date('Y-m-d');
+		$desc = 'Fechou o Chamado '.$idChamado;
+		
+		$query_Logs = "INSERT INTO radius.logs (id ,login ,data ,desc)VALUES (NULL , '$user_logado', '$data', '$desc')";
+		$result_logs = mysql_query($query_Logs);
+		////////////////////////////////////////////////////////
+	}
+	public function selecionarAntenaCliente($idChamado)
+	{
+		//Pegando Todos os Dados do Chamado------------------------------------------//
+		$queryDadosChamados = "SELECT * FROM db_opus.tb_chamados WHERE id_chamado = '$idChamado'";
+		$resultDadosChamados = mysql_query($queryDadosChamados);
+		$rowDadosChamados = mysql_fetch_assoc($resultDadosChamados);
+		$nomeCliente = $rowDadosChamados['codCliente'];
+		
+		//Pegar o Valor Antena da Tabela Cliente-------------------------------------------------------//
+		$queryCliente = "SELECT pessoa.antena FROM pessoa  WHERE codCliente LIKE '$nomeCliente'";
+		$resultCliente = mysql_query($queryCliente);
+		$rowCliente = mysql_fetch_assoc($resultCliente);
+		$antena = $rowCliente['antena'];
+		
+		return $antena;
+	}
+	
+	public function selecionarChamadosPorCliente($nomeCliente)
+	{
+		$query = "SELECT * FROM tb_chamados WHERE codCliente LIKE '$nomeCliente' ORDER by data_fechamento DESC"; //IMPLEMENTAR JOIN
+		$result = mysql_query($query);
+		
+		while ($row = mysql_fetch_assoc($result)) {
+    		
+			$chamado = new ChamadosVO();
+				
+								
+			$chamado->id = $row['id_chamado'];
+			$chamado->status = $row['status'];
+			$chamado->data_fechamento = $row['data_fechamento'];
+			$chamado->problema = $row['problema'];
+			$chamado->conclusao = $row['conclusao'];
+			$chamado->tecnico = $row['tecnico'];
+			$chamado->tipo = $row['tipo'];
+		
+		
+						
+			$chamados[] = $chamado;
+			
+			
+		}
+		
+			return  $chamados;
+		
+	}
+	
+	
+}

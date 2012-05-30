@@ -1,0 +1,28 @@
+<?php
+
+require_once 'classes/BaseClass.php';
+
+require_once 'vo/InterfacesVO.php';
+
+
+class Interfaces extends BaseClass
+{
+	public function listarInterfaces()
+	{
+		$query = "SELECT * FROM acessos";
+		$result = mysql_query($query);
+		
+		
+		while($row = mysql_fetch_assoc($result))
+		{
+			$interface = new InterfacesVO();
+			
+			$interface->id = $row['id'];
+			$interface->acesso = $row['acesso'];
+			
+			$interfaces[] = $interface;
+		}
+		
+		return $interfaces;
+	}
+}
