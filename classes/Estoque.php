@@ -59,6 +59,43 @@ class Estoque extends Conexao
 		while($row0 = $result0->fetch_assoc())
 		{
 			$valorTotal = $valorTotal+$row0['VALOR_CUSTO'];
+			
+			$ID = $row0['PRODUTO_ID'];
+			$UNIDADE_PRODUTO_ID = $row0['UNIDADE_PRODUTO_ID'];
+			$VALOR_CUSTO = $row0['VALOR_CUSTO'];
+			$VALOR_VENDA = $row0['VALOR_VENDA'];
+			$ICMS = $row0['ICMS'];
+			$IPI = $row0['IPI'];
+			$DARF = $row0['DARF'];
+			$GARANTIA = $row0['GARANTIA'];
+			
+			
+			
+			//VERIFICAR QUANTIDADE JA EXISTENTE
+			$query1 = "SELECT * FROM produto WHERE ID=$ID";
+			$result1 = $this->conn->query($query1);
+			
+			//CASO NAO ENCONTRE O PRODUTO INFORMADO A CONDICAO FALHARA
+			if($result1->num_rows == 0)
+			{
+				$resultado = false;
+			}
+			
+			//RESULTADO DA BUSCA PELO PRODUTO INFORMADO
+			$row1 = $result1->fetch_assoc();
+			
+			//DEFINE A QUANTIDADE JA EXISTENTE
+			$qtdAntiga = $row1['QTD_ESTOQUE'];
+			
+			//DEFINE A NOVA QUANTIDADE
+			$qtdNova = $qtdAntiga + $row0['QTD'];
+			
+			//ATUALIZAR CADASTRO DE PRODUTOS
+			$queryUP = "UPDATE FROM produto SET ID_UNIDADE_PRODUTO=$UNIDADE_PRODUTO_ID,
+			QTD_ESTOQUE=$qtdNova, QTD_ESTOQUE_ANTERIOR=$qtdAntiga, VALOR_CUSTO=$VALOR_CUSTO, VALOR_VENDA=$VALOR_VENDA,
+			TAXA_IPI=$IPI, TAXA_ICMS=$ICMS, GARANTIA='$GARANTIA'";
+			
+			$resultUP = $this->conn->query($queryUP);
 		}
 		
 		$mecVO->QTD_ITENS = $nRow0;
