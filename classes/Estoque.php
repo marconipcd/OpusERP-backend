@@ -209,18 +209,12 @@ class Estoque extends Conexao
 	{
 		//VERIFICA SE FOI DADOS ALGUM DESCONTO
 		
+		
 		//VERIFICA SE FOI DADO ALGUM ACRESCIMO
 		
-		//GERA PDF
-		$content = "<page backtop='0mm' backbottom='0mm' backleft='10mm' backright='10mm' >";
-                $content .= "teste";							
-		$content .= "</page>";		
-		
-		$html2pdf = new HTML2PDF('P','A4','pt', true, 'ISO-8859-1', array(0, 0, 0, 0));
-		$html2pdf->writeHTML($content);
-		$html2pdf->Output('DAV'.$codDAV.'.pdf',true);
-		
-		
+		//ATUALIZA DAV CABECALHO
+		$query0 ="UPDATE dav_cabecalho SET SITUACAO = 'F' WHERE ID =$codDAV";
+		$result0 = $this->conn->query($query0);
 	}
 	
 	/**
