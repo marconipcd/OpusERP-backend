@@ -1,22 +1,11 @@
 <?php
 
-require_once 'classes/Estoque.php';
-require_once 'vo/MovimentoEntCabecalhoVO.php';
-
-$teste = new Estoque();
-$mecVO = new MovimentoEntCabecalhoVO();
-
-$mecVO->ID = 1;
-$mecVO->EMPRESA_ID = 2;
-$mecVO->COD_NF = 342324324;
-$mecVO->FORNECEDOR_ID = 123;
-$mecVO->QTD_ITENS = 1;
-$mecVO->VALOR_TOTAL = 2;
+require_once 'classes/Pedido.php';
 
 
+$teste = new Pedido();
 
-
-print_r($teste->cadastrarCabeEntMovNF($mecVO));
+print_r($teste->procurarPedidos('PREVENDA','FECHADO','','','','2'));
 
 
 

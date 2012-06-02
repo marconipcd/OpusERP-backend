@@ -12,6 +12,7 @@ class DavCabecalhoVO
 		public $NOME_DESTINATARIO;
 		public $CPF_CNPJ_DESTINATARIO;
 		public $DATA_EMISSAO;
+		public $DATA;
 		public $HORA_EMISSAO;
 		public $SITUACAO;
 		public $TAXA_ACRESCIMO;

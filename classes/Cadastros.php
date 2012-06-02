@@ -16,6 +16,7 @@ require_once 'vo/TransportadorasVO.php';
 
 class Cadastros extends Conexao
 {
+	
 	/**
 	 * Função Busca Cliente Através do CPF/CNPJ ou NOME_RAZAO
 	 * @author Marconi César

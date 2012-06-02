@@ -558,7 +558,7 @@ class Estoque extends Conexao
 		$EMPRESA_ID = $row1['EMPRESA_ID'];
 		
 		//DEFINE O NUMERO DA PREVENDA FORMATADO
-		$N_PREVENDA = str_pad( $row1['ID'], 20, '0', STR_PAD_LEFT );
+		$N_PREVENDA = str_pad( $row1['ID'], 6, '0', STR_PAD_LEFT );
 		
 		//DEFINE O VALOR TOTAL FORMATADO
 		$SUB_TOTAL = number_format($row1['VALOR'], 2, '.', '');

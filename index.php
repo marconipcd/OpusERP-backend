@@ -17,6 +17,7 @@ require_once 'classes/Relatorios.php';
 require_once 'classes/Suporte.php';
 require_once 'classes/Rotinas.php';
 require_once 'classes/Bug.php';
+require_once 'classes/Pedido.php';
 
 //Objetos VO
 require_once 'vo/ClientesVO.php';
@@ -89,6 +90,7 @@ $amf->setClass('Configuracoes')
 	->setClass('Rotinas')
 	->setClass('LogOpus')
         ->setClass('Bug')
+        ->setClass('Pedido')
         ->setClassMap('DavDetalheVO', 'DavDetalheVO')	
 	->setClassMap('BugVO', 'BugVO')	
 	->setClassMap('MovimentoEntDetalheVO', 'MovimentoEntDetalheVO')	

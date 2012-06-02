@@ -3767,7 +3767,7 @@ WHERE username = '$login' ";
 		//$API->debug = true;
 				
 		//CASO CONSIGA SE CONECTAR AO SERVIDOR
-		if ($API->connect($IP_SERVIDOR, 'admin', 'admin'))
+		if ($API->connect('192.168.20.1', 'marconi', '123'))
 		{
 			//PROCURA INTERFACES DO SERVIDOR ESCOLHIDO
 			$query2 = "SELECT * FROM  interface WHERE SERVIDORES_ID=$ID_SERVIDOR";
