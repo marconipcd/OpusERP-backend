@@ -172,7 +172,7 @@ class Estoque extends Conexao
 				$valorTotal += $arrValores2;
 			}
 			
-			$query = "UPDATE ecf_pre_venda_cabecalho SET VALOR=$valorTotal WHERE ID='$codPrevenda'";
+			$query = "UPDATE ecf_pre_venda_cabecalho SET VALOR=$valorTotal, SUB_TOTAL=$valorTotal WHERE ID='$codPrevenda'";
 			$result = $this->conn->query($query);
 		
 		return $valorTotal;
@@ -543,9 +543,13 @@ class Estoque extends Conexao
 			
 		}//GERACAO DE TITULOS
 		
+		//FALTA ATUALIZAR VALOR 
 		
+		$ecfVC->TOTAL_DESC = str_replace(',','.',$ecfVC->TOTAL_DESC);
+						
 		//ATUALIZA A FORMA DE PGTO E A SITUACAO PARA FECHADO
-		$query = "UPDATE ecf_pre_venda_cabecalho SET SITUACAO='$ecfVC->SITUACAO', FORMAS_PAGAMENTO_ID=$ecfVC->FORMAS_PAGAMENTO_ID WHERE ID='$ecfVC->ID'";
+		$query = "UPDATE ecf_pre_venda_cabecalho SET SITUACAO='$ecfVC->SITUACAO', FORMAS_PAGAMENTO_ID=$ecfVC->FORMAS_PAGAMENTO_ID,
+		TOTAL_DESC=$ecfVC->TOTAL_DESC WHERE ID='$ecfVC->ID'";
 		if(!$result = $this->conn->query($query))
 		{
 			return 'ERRO FECHAR PRE-VENDA: '.$this->conn->error;
@@ -561,7 +565,10 @@ class Estoque extends Conexao
 		$N_PREVENDA = str_pad( $row1['ID'], 6, '0', STR_PAD_LEFT );
 		
 		//DEFINE O VALOR TOTAL FORMATADO
-		$SUB_TOTAL = number_format($row1['VALOR'], 2, '.', '');
+		$SUB_TOTAL = number_format($row1['SUB_TOTAL'], 2, '.', '');
+		
+		//DESCONTO
+		$DESC = number_format($ecfVC->TOTAL_DESC, 2, '.', '');
 		
 		//PROCURA POR ITENS DA PREVENDA
 		$query2 = "SELECT pvd.*, p.*, undP.NOME as UNIDADE
@@ -605,7 +612,7 @@ class Estoque extends Conexao
 		$DATA_EMISSAO = date('dmYHms');
 		
 		//-INICIO---REGISTRO PRE
-		$escreve = fwrite($fp, 'PRE|'.$N_PREVENDA.'|'.$DATA_EMISSAO.'|0|'.$cliente->NOME_RAZAO.'|'.$cliente->DOC_CPF_CNPJ.'|1|'.$SUB_TOTAL.'|0.00|0.00|'.$QTD_ITENS.'|||||||||||||0|'.$quebra);	
+		$escreve = fwrite($fp, 'PRE|'.$N_PREVENDA.'|'.$DATA_EMISSAO.'|0|'.$cliente->NOME_RAZAO.'|'.$cliente->DOC_CPF_CNPJ.'|1|'.$SUB_TOTAL.'|'.$DESC.'|0.00|'.$QTD_ITENS.'|||||||||||||0|'.$quebra);	
 		//-FIM---REGISTRO PRE
 		
 		
@@ -1039,10 +1046,8 @@ class Estoque extends Conexao
 		$dataPV = date('Y-m-d');
 		$horaPV = date('h:m:s');
 		
-		$query = "INSERT INTO ecf_pre_venda_cabecalho (EMPRESA_ID, DATA_PV, HORA_PV, SITUACAO, VALOR) VALUES ('$codEmpresa','$dataPV', '$horaPV', 'A', 0)";
-		$result = $this->conn->query($query);
-		
-		
+		$query = "INSERT INTO ecf_pre_venda_cabecalho (EMPRESA_ID, DATA_PV, HORA_PV, SITUACAO, TOTAL_DESC, SUB_TOTAL,VALOR) VALUES ('$codEmpresa','$dataPV', '$horaPV', 'A',0,0, 0)";
+		$result = $this->conn->query($query);	
 			
 		//PROCURA ULTIMA PR�-VENDA
 		$queryUltimaPV = "SELECT * FROM ecf_pre_venda_cabecalho ORDER by ID DESC";
